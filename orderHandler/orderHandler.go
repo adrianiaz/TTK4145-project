@@ -2,10 +2,10 @@ package orderHandler
 
 //import(elevio)
 
-// type ButtonEvent struct{
-// 	Floor  int
-// 	Button ButtonType
-// }
+type ButtonEvent struct{
+	Floor  int
+	Button ButtonType
+}
 
 type NewOrder struct {
 	Floor   int
