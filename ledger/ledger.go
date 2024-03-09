@@ -1,25 +1,30 @@
 package ledger
 
-//import ("encoding/json", log, fmt)
+import (
+	"encoding/json"
+)
 
-type ledger struct {
+type Ledger struct {
 	BackupMaster []string `json:"backupMaster"` //maby int instead og string if use of IP?
 	Alive        []string `json:"alive"`
 	Orders       []string `json:"orders"`
 }
 
-// Exampel of serializing (Marshal):
-// type Person struct {
-//     Navn  string `json:"navn"`
-//     Alder int    `json:"alder"`
-// }
+func serialize(ledger Ledger) (string, error){
+	//serialize to json
+	ledgerJson, err := json.Marshal(ledger)
+	if err != nil{
+		return "", err
+	}
+	return string(ledgerJson), nil 
+}
 
-// func main() {
-//     p := Person{"Ola Nordmann", 30}
-//     pJson, err := json.Marshal(p)
-//     if err != nil {
-//         fmt.Println(err)
-//     }
-//     fmt.Println(string(pJson)) // Output: {"navn":"Ola Nordmann","alder":30}
-// }
-//
+func deserialize(ledgerJson string) (*Ledger, error) {
+	var ledger Ledger
+	err := json.Unmarshal([]byte(ledgerJson), &ledger)
+	if err != nil {
+		return nil, err
+	}
+	return &ledger, nil
+}
+
