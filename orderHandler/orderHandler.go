@@ -2,6 +2,14 @@ package orderHandler
 
 //import(elevio)
 
+type ButtonType int
+
+const (
+	BT_HallUp   ButtonType = 0
+	BT_HallDown            = 1
+	BT_Cab                 = 2
+)
+
 type ButtonEvent struct{
 	Floor  int
 	Button ButtonType
@@ -10,21 +18,23 @@ type ButtonEvent struct{
 type NewOrder struct {
 	Floor   int
 	BtnType ButtonType
+	ElevatorID int
 }
 
-func orderHandler(ButtonPressChan chan ButtonEvent, CompletedOrderChan chan OrderEvent) {
+func orderHandler(ButtonPressCh chan ButtonEvent, NewOrderCh chan NewOrder) {
 
 	for {
 		select {
 
-		case button := <-ButtonPressChan:
+		case button := <-ButtonPressCh:
 			//Do something with the button event
 			//buttons := []ButtonEvent{button} //A slice of ButtonEvents
-
-		//orders complete
-		case completed := <-CompletedOrderChan:
-			//Do something with the completed order. Send to network.
-
+			newOrder := NewOrder{
+				Floor: button.Floor,
+				BtnType: button.Button,
+				ElevatorID: 0, //placeholder
+			}
+			NewOrderCh <- newOrder
 		}
 
 	}
