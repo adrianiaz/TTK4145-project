@@ -3,24 +3,6 @@ package master
 //"github.com/adrianiaz/TTK4145-project/ledger"
 
 // placeholder types
-type ButtonType int
-
-const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
-
-type NewOrder struct {
-	Floor      int
-	BtnType    ButtonType
-	ElevatorID int
-}
-
-type CompletedOrder struct {
-	ElevatorID int
-	Floor      int
-}
 
 //uses ordersToMasterch
 

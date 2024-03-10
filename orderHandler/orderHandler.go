@@ -2,25 +2,6 @@ package orderHandler
 
 //import(elevio)
 
-type ButtonType int
-
-const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
-
-type ButtonEvent struct {
-	Floor  int
-	Button ButtonType
-}
-
-type NewOrder struct {
-	Floor      int
-	BtnType    ButtonType
-	ElevatorID int
-}
-
 func orderHandler(ButtonPressCh chan ButtonEvent, NewOrderCh chan NewOrder) {
 
 	for {

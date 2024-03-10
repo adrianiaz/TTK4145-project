@@ -17,7 +17,7 @@ const (
 
 type TravelDir int
 
-type elevatorState struct {
+type ElevatorState struct {
 	Floor           int
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
@@ -26,8 +26,8 @@ type elevatorState struct {
 }
 
 const (
-	travellingUp TravelDir = iota
-	travellingDown
+	TravellingUp TravelDir = iota
+	TravellingDown
 )
 
 type Ledger struct {
@@ -36,7 +36,7 @@ type Ledger struct {
 	Orders       []string `json:"orders"`
 }
 
-func serialize(ledger Ledger) (string, error) {
+func Serialize(ledger Ledger) (string, error) {
 	//serialize to json
 	ledgerJson, err := json.Marshal(ledger)
 	if err != nil {
@@ -45,11 +45,22 @@ func serialize(ledger Ledger) (string, error) {
 	return string(ledgerJson), nil
 }
 
-func deserialize(ledgerJson string) (*Ledger, error) {
+func Deserialize(ledgerJson string) (*Ledger, error) {
 	var ledger Ledger
 	err := json.Unmarshal([]byte(ledgerJson), &ledger)
 	if err != nil {
 		return nil, err
 	}
 	return &ledger, nil
+}
+
+type NewOrder struct {
+	Floor      int
+	BtnType    ButtonType
+	ElevatorID int
+}
+
+type CompletedOrder struct {
+	ElevatorID int
+	Floor      int
 }
