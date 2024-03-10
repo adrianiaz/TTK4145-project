@@ -30,10 +30,17 @@ const (
 	TravellingDown
 )
 
+type outgoingOrder struct {
+	ElevatorID string
+	FromFloor  int
+	ToFloor    int
+}
+
 type Ledger struct {
-	BackupMaster []string `json:"backupMaster"` //maby int instead og string if use of IP?
-	Alive        []string `json:"alive"`
-	Orders       []string `json:"orders"`
+	ElevatorStates  []ElevatorState `json:"elevatorStates"`
+	BackupMasterlst []string        `json:"backupMaster"`
+	Alive           []bool          `json:"alive"`
+	OutgoingOrders  []outgoingOrder `json:"outgoingOrder"`
 }
 
 func Serialize(ledger Ledger) (string, error) {
