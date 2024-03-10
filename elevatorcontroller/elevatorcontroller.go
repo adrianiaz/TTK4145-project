@@ -1,15 +1,6 @@
 package elevatorcontroller
 
-import (
-	"github.com/adrianiaz/TTK4145-project/elevio"
-	"github.com/adrianiaz/TTK4145-project/globaltypes"
-)
-
 type Elevator struct {
-	Floor     int
-	Behaviour globaltypes.ElevatorBehaviour
-	Direction elevio.MotorDirection
-	Requests  [][]bool
 }
 
 /* type ClearRequestVariant struct {

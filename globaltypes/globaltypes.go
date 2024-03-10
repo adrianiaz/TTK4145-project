@@ -8,12 +8,22 @@ const (
 type ElevatorBehaviour int
 
 const (
-	EB_Idle ElevatorBehaviour = iota //this should probably be moved to another file.
+	EB_Idle ElevatorBehaviour = iota
 	EB_DoorOpen
 	EB_Moving
 )
 
+type TravelDir int
+
+type elevatorState struct {
+	Floor           int
+	Behaviour       ElevatorBehaviour
+	TravelDirection TravelDir
+	ElevatorID      string
+	Requests        [N_FLOORS][N_BUTTONS]bool
+}
+
 const (
-	travellingUp = iota
+	travellingUp TravelDir = iota
 	travellingDown
 )
