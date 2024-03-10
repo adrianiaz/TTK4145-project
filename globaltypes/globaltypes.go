@@ -64,3 +64,11 @@ type CompletedOrder struct {
 	ElevatorID int
 	Floor      int
 }
+
+type ButtonType int
+
+const (
+	BT_HallUp   ButtonType = 0
+	BT_HallDown            = 1
+	BT_Cab                 = 2
+)
