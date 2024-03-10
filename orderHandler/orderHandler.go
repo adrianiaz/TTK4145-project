@@ -10,14 +10,14 @@ const (
 	BT_Cab                 = 2
 )
 
-type ButtonEvent struct{
+type ButtonEvent struct {
 	Floor  int
 	Button ButtonType
 }
 
 type NewOrder struct {
-	Floor   int
-	BtnType ButtonType
+	Floor      int
+	BtnType    ButtonType
 	ElevatorID int
 }
 
@@ -30,8 +30,8 @@ func orderHandler(ButtonPressCh chan ButtonEvent, NewOrderCh chan NewOrder) {
 			//Do something with the button event
 			//buttons := []ButtonEvent{button} //A slice of ButtonEvents
 			newOrder := NewOrder{
-				Floor: button.Floor,
-				BtnType: button.Button,
+				Floor:      button.Floor,
+				BtnType:    button.Button,
 				ElevatorID: 0, //placeholder
 			}
 			NewOrderCh <- newOrder
