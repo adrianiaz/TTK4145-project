@@ -1,23 +1,36 @@
 package master
 
-//"github.com/adrianiaz/TTK4145-project/ledger"
+import (
+	"github.com/adrianiaz/TTK4145-project/globaltypes"
+)
 
 // placeholder types
 
 //uses ordersToMasterch
 
 func master(ordersToMasterCh <-chan interface{}) {
-	//instantiate new ledger with default values
-	//ledger := ledger.Ledger{BackupMaster: []string{" "}, Alive: true, Orders: []string{" "}}
-
+	//initialize a ledger with default values
+	ledger := globaltypes.Ledger{}
 	for {
 		select {
 		case order := <-ordersToMasterCh:
 			switch order := order.(type) {
-			case NewOrder:
-				order.ElevatorID = 0 // placegholder for stopping warnings
-				// handle new order
-				// ...
+			case globaltypes.NewOrder:
+				if order.BtnType == globaltypes.BT_Cab {
+					//append a new active order to the ActiveOrders slice with elevatorID as key
+					newActiveOrder := globaltypes.ActiveOrder{
+						ElevatorID : order.ElevatorID,
+						OrderID : len(ledger.ActiveOrders[order.ElevatorID]), //orderID is the index of the new order in the slice
+						ToFloor : order.Floor,
+						FromFloor : 0, //placeholder, need to get the fromFloor from the elevatorState
+					}
+					ledger.ActiveOrders[order.ElevatorID] = append(ledger.ActiveOrders[order.ElevatorID], newActiveOrder)
+				}
+				else {
+					//find the elevator with the least distance to the order
+					//append a new active order to the ActiveOrders slice with elevatorID as key
+					//send the new active order to the elevator
+				}
 			case CompletedOrder:
 				// handle completed order
 				// ...

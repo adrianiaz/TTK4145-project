@@ -30,17 +30,40 @@ const (
 	TravellingDown
 )
 
-type outgoingOrder struct {
+type ButtonType int
+
+const (
+	BT_HallUp   ButtonType = 0
+	BT_HallDown ButtonType = 1
+	BT_Cab      ButtonType = 2
+)
+
+//order structs and Ledger struct and member functions
+
+type NewOrder struct {
+	ElevatorID int
+	Floor      int
+	BtnType    ButtonType
+}
+
+type CompletedOrder struct {
+	ElevatorID int
+	Floor      int
+	OrderID    int
+}
+type ActiveOrder struct {
 	ElevatorID string
+	OrderID    int
 	FromFloor  int
 	ToFloor    int
 }
 
 type Ledger struct {
-	ElevatorStates  []ElevatorState `json:"elevatorStates"`
-	BackupMasterlst []string        `json:"backupMaster"`
-	Alive           []bool          `json:"alive"`
-	OutgoingOrders  []outgoingOrder `json:"outgoingOrder"`
+	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
+	ActiveOrders    map[string][]ActiveOrder `json:"activeOrders"`
+	ElevatorStates  []ElevatorState          `json:"elevatorStates"`
+	BackupMasterlst []string                 `json:"backupMaster"`
+	Alive           []bool                   `json:"alive"`
 }
 
 func Serialize(ledger Ledger) (string, error) {
@@ -60,22 +83,3 @@ func Deserialize(ledgerJson string) (*Ledger, error) {
 	}
 	return &ledger, nil
 }
-
-type NewOrder struct {
-	Floor      int
-	BtnType    ButtonType
-	ElevatorID int
-}
-
-type CompletedOrder struct {
-	ElevatorID int
-	Floor      int
-}
-
-type ButtonType int
-
-const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
