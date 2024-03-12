@@ -15,6 +15,10 @@ const (
 	EB_Moving
 )
 
+type orders2D [N_FLOORS][N_BUTTONS]bool
+
+type AllOrders map[string]orders2D //all the order matrices for all the elevators
+
 type TravelDir int
 
 type ElevatorState struct {
@@ -22,12 +26,13 @@ type ElevatorState struct {
 	Floor           int
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
-	Requests        [N_FLOORS][N_BUTTONS]bool
+	Requests        orders2D
 }
 
 const (
-	TravellingUp TravelDir = iota
-	TravellingDown
+	TravelDown TravelDir = iota - 1
+	TravelStop
+	TravelUp
 )
 
 type ButtonType int
