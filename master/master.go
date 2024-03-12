@@ -35,6 +35,7 @@ func Master(ordersToMasterCh <-chan interface{}) {
 				//remove the completed order from ActiveOrders and rewrites to ledger
 				ledger.ActiveOrders[order.ElevatorID] = newActiveOrderlst(ledger.ActiveOrders[order.ElevatorID], order.OrderID)
 			}
+
 		}
 	}
 }
