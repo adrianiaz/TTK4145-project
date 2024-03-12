@@ -2,16 +2,15 @@ package elevatorcontroller
 
 import (
 	"fmt"
-	"net"
 
 	. "github.com/adrianiaz/TTK4145-project/elevio"
-	. "github.com/adrianiaz/TTK4145-project/globaltypes"
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
 type Elevator struct {
-	State  ElevatorState
-	lights orders2D
-	orders orders2D
+	State  gd.ElevatorState
+	lights gd.Orders2D
+	orders gd.Orders2D
 }
 
 type ElevatorChannels struct {
@@ -22,30 +21,28 @@ type ElevatorChannels struct {
 }
 
 func InitiateElevator(ElevatorID string, addr string, numFloors int) Elevator {
-	func Init(addr string, numFloors int)
+	Init(addr, numFloors)
 	elev := Elevator{
-		State: ElevatorState{
+		State: gd.ElevatorState{
 			Floor:           0,
-			Behaviour:       EB_Idle,
-			TravelDirection: TravelStop,
+			Behaviour:       gd.EB_Idle,
+			TravelDirection: gd.TravelStop,
 			ElevatorID:      ElevatorID,
 		},
-		orders{},
-		lights{},
+		orders: gd.Orders2D{},
+		lights: gd.Orders2D{},
 	}
 	return elev
 }
 
-func StartElevatorController(ElevatorID string, addr string, numFloors int, orderch OrderCh) {
+func StartElevatorController(ElevatorID string, addr string, numFloors int, orderch bool) {
 
 	fmt.Println("ElevatorController started")
-	elev := InitiateElevator(ElevatorID, addr string, numFloors int)
+	elev := InitiateElevator(ElevatorID, addr, numFloors)
 
 	/* doorOpenCh := make(chan bool, 100)
 	doorOpenLamp := time.Newtimer(time.Second * 3)
 	doorOpenLamp.Stop() */
-
-	
 
 }
 
@@ -56,8 +53,8 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, orde
 } */
 
 func (elev Elevator) orderRegisteredAbove() bool {
-	for floorAbove := elev.State.Floor + 1; floorAbove < N_FLOORS; floorAbove++ {
-		for btn := 0; btn < N_BUTTONS; btn++ {
+	for floorAbove := elev.State.Floor + 1; floorAbove < gd.N_FLOORS; floorAbove++ {
+		for btn := 0; btn < gd.N_BUTTONS; btn++ {
 			if elev.orders[floorAbove][btn] {
 				return true
 			}
@@ -68,7 +65,7 @@ func (elev Elevator) orderRegisteredAbove() bool {
 
 func (elev Elevator) orderRegisteredBelow() bool {
 	for floorBelow := elev.State.Floor - 1; floorBelow >= 0; floorBelow-- {
-		for btn := 0; btn < N_BUTTONS; btn++ {
+		for btn := 0; btn < gd.N_BUTTONS; btn++ {
 			if elev.orders[floorBelow][btn] {
 				return true
 			}
@@ -77,31 +74,31 @@ func (elev Elevator) orderRegisteredBelow() bool {
 	return false
 }
 
-func (elev Elevator) chooseDirection() TravelDir {
+func (elev Elevator) chooseDirection() gd.TravelDir {
 	orderAbove := elev.orderRegisteredAbove()
 	orderBelow := elev.orderRegisteredBelow()
 
 	switch elev.State.TravelDirection {
-	case TravelUp:
+	case gd.TravelUp:
 		if orderAbove {
-			return TravelUp
+			return gd.TravelUp
 		} else if orderBelow {
-			return TravelDown
+			return gd.TravelDown
 		} else {
-			return TravelDown //implemented to prevent unexpected behaviour or getting stuck
+			return gd.TravelDown //implemented to prevent unexpected behaviour or getting stuck
 		}
 
-	case TravelDown:
+	case gd.TravelDown:
 		if orderBelow {
-			return TravelDown
+			return gd.TravelDown
 		} else if orderAbove {
-			return TravelUp
+			return gd.TravelUp
 		} else {
-			return TravelUp //implemented to prevent unexpected behaviour or getting stuck
+			return gd.TravelUp //implemented to prevent unexpected behaviour or getting stuck
 		}
 
 	default:
-		return TravelStop
+		return gd.TravelStop
 	}
 }
 
@@ -117,7 +114,7 @@ func (elev Elevator) chooseDirection() TravelDir {
 } */
 
 func (elev Elevator) orderRegisteredAtCurrentFloor() bool {
-	for btn := 0; btn < N_BUTTONS; btn++ {
+	for btn := 0; btn < gd.N_BUTTONS; btn++ {
 		if elev.orders[elev.State.Floor][btn] {
 			return true
 		}
@@ -131,13 +128,13 @@ func (elev Elevator) elevatorShouldStop() bool {
 	currentFloor := elev.State.Floor
 
 	switch elev.State.TravelDirection {
-	case TravelUp:
-		return elev.orders[currentFloor][BT_Cab] || elev.orders[currentFloor][BT_HallUp] || (!orderAbove)
+	case gd.TravelUp:
+		return elev.orders[currentFloor][gd.BT_Cab] || elev.orders[currentFloor][gd.BT_HallUp] || (!orderAbove)
 
-	case TravelDown:
-		return elev.orders[currentFloor][BT_Cab] || elev.orders[currentFloor][BT_HallDown] || (!orderBelow)
+	case gd.TravelDown:
+		return elev.orders[currentFloor][gd.BT_Cab] || elev.orders[currentFloor][gd.BT_HallDown] || (!orderBelow)
 
-	case TravelStop:
+	case gd.TravelStop:
 		return false
 	default:
 		return false

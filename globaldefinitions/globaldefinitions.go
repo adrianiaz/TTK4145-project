@@ -15,9 +15,9 @@ const (
 	EB_Moving
 )
 
-type orders2D [N_FLOORS][N_BUTTONS]bool
+type Orders2D [N_FLOORS][N_BUTTONS]bool
 
-type AllOrders map[string]orders2D //all the order matrices for all the elevators
+type AllOrders map[string]Orders2D //all the order matrices for all the elevators
 
 type TravelDir int
 
@@ -26,7 +26,7 @@ type ElevatorState struct {
 	Floor           int
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
-	Requests        orders2D
+	Requests        Orders2D
 }
 
 const (
@@ -42,6 +42,11 @@ const (
 	BT_HallDown ButtonType = 1
 	BT_Cab      ButtonType = 2
 )
+
+type ButtonEvent struct {
+	Floor  int
+	Button ButtonType
+}
 
 //order structs and Ledger struct and member functions
 

@@ -5,6 +5,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
 const _pollRate = 20 * time.Millisecond
@@ -21,19 +23,6 @@ const (
 	MD_Down                = -1
 	MD_Stop                = 0
 )
-
-type ButtonType int
-
-const (
-	BT_HallUp   ButtonType = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
-
-type ButtonEvent struct {
-	Floor  int
-	Button ButtonType
-}
 
 func Init(addr string, numFloors int) {
 	if _initialized {
@@ -54,7 +43,7 @@ func SetMotorDirection(dir MotorDirection) {
 	write([4]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button ButtonType, floor int, value bool) {
+func SetButtonLamp(button gd.ButtonType, floor int, value bool) {
 	write([4]byte{2, byte(button), byte(floor), toByte(value)})
 }
 
@@ -70,15 +59,15 @@ func SetStopLamp(value bool) {
 	write([4]byte{5, toByte(value), 0, 0})
 }
 
-func PollButtons(receiver chan<- ButtonEvent) {
+func PollButtons(receiver chan<- gd.ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
 	for {
 		time.Sleep(_pollRate)
 		for f := 0; f < _numFloors; f++ {
-			for b := ButtonType(0); b < 3; b++ {
+			for b := gd.ButtonType(0); b < 3; b++ {
 				v := GetButton(b, f)
 				if v != prev[f][b] && v != false {
-					receiver <- ButtonEvent{f, ButtonType(b)}
+					receiver <- gd.ButtonEvent{Floor: f, Button: gd.ButtonType(b)}
 				}
 				prev[f][b] = v
 			}
@@ -122,7 +111,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 	}
 }
 
-func GetButton(button ButtonType, floor int) bool {
+func GetButton(button gd.ButtonType, floor int) bool {
 	a := read([4]byte{6, byte(button), byte(floor), 0})
 	return toBool(a[1])
 }
