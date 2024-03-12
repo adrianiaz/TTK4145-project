@@ -1,7 +1,8 @@
 package elevatorcontroller
 
 import (
-	"time"
+	"fmt"
+	"net"
 
 	. "github.com/adrianiaz/TTK4145-project/elevio"
 	. "github.com/adrianiaz/TTK4145-project/globaltypes"
@@ -20,7 +21,8 @@ type ElevatorChannels struct {
 	StopCh         chan bool
 }
 
-func InitiateElevator(ElevatorID string) Elevator {
+func InitiateElevator(ElevatorID string, addr string, numFloors int) Elevator {
+	func Init(addr string, numFloors int)
 	elev := Elevator{
 		State: ElevatorState{
 			Floor:           0,
@@ -34,14 +36,16 @@ func InitiateElevator(ElevatorID string) Elevator {
 	return elev
 }
 
-func StartElevatorController(ElevatorID string, orderch OrderCh) {
+func StartElevatorController(ElevatorID string, addr string, numFloors int, orderch OrderCh) {
 
-	Println("ElevatorController started")
-	elev := InitiateElevator(ElevatorID)
+	fmt.Println("ElevatorController started")
+	elev := InitiateElevator(ElevatorID, addr string, numFloors int)
 
-	doorOpenCh := make(chan bool, 100)
+	/* doorOpenCh := make(chan bool, 100)
 	doorOpenLamp := time.Newtimer(time.Second * 3)
-	doorOpenLamp.Stop()
+	doorOpenLamp.Stop() */
+
+	
 
 }
 
@@ -84,7 +88,7 @@ func (elev Elevator) chooseDirection() TravelDir {
 		} else if orderBelow {
 			return TravelDown
 		} else {
-			return TravelDown
+			return TravelDown //implemented to prevent unexpected behaviour or getting stuck
 		}
 
 	case TravelDown:
@@ -93,7 +97,7 @@ func (elev Elevator) chooseDirection() TravelDir {
 		} else if orderAbove {
 			return TravelUp
 		} else {
-			return TravelUp
+			return TravelUp //implemented to prevent unexpected behaviour or getting stuck
 		}
 
 	default:
