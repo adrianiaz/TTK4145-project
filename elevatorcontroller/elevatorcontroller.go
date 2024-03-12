@@ -2,6 +2,7 @@ package elevatorcontroller
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/adrianiaz/TTK4145-project/elevio"
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
@@ -40,9 +41,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, orde
 	fmt.Println("ElevatorController started")
 	elev := InitiateElevator(ElevatorID, addr, numFloors)
 
-	/* doorOpenCh := make(chan bool, 100)
-	doorOpenLamp := time.Newtimer(time.Second * 3)
-	doorOpenLamp.Stop() */
+	doorOpenCh := make(chan bool, 100)
+	doorOpenLamp := time.NewTimer(time.Second * 3)
+	doorOpenLamp.Stop()
 
 }
 
@@ -99,6 +100,54 @@ func (elev Elevator) chooseDirection() gd.TravelDir {
 
 	default:
 		return gd.TravelStop
+	}
+}
+
+// Just used in the function requestsChooseDirection
+type DirBehaviourPair struct {
+	Dir       gd.TravelDir
+	Behaviour gd.ElevatorBehaviour
+}
+
+// alternative to chooseDirection
+func (elev Elevator) requestsChooseDirection() DirBehaviourPair {
+	orderAbove := elev.orderRegisteredAbove()
+	orderBelow := elev.orderRegisteredBelow()
+	orderHere := elev.orderRegisteredAtCurrentFloor()
+
+	switch elev.State.TravelDirection {
+	case gd.TravelUp:
+		if orderAbove {
+			return DirBehaviourPair{gd.TravelUp, gd.EB_Moving}
+		} else if orderHere {
+			return DirBehaviourPair{gd.TravelStop, gd.EB_DoorOpen}
+		} else if orderBelow {
+			return DirBehaviourPair{gd.TravelDown, gd.EB_Moving}
+		} else {
+			return DirBehaviourPair{gd.TravelStop, gd.EB_Idle} //consider implementing an alternative that handles unexpected behaviour
+		} //e.g. changing to {gd.TravelDown, gd.EB_Moving} if no orders are above
+	case gd.TravelDown:
+		if orderBelow {
+			return DirBehaviourPair{gd.TravelDown, gd.EB_Moving}
+		} else if orderHere {
+			return DirBehaviourPair{gd.TravelStop, gd.EB_DoorOpen}
+		} else if orderAbove {
+			return DirBehaviourPair{gd.TravelUp, gd.EB_Moving}
+		} else {
+			return DirBehaviourPair{gd.TravelStop, gd.EB_Idle}
+		}
+	case gd.TravelStop:
+		if orderHere {
+			return DirBehaviourPair{gd.TravelStop, gd.EB_DoorOpen}
+		} else if orderAbove {
+			return DirBehaviourPair{gd.TravelUp, gd.EB_Moving}
+		} else if orderBelow {
+			return DirBehaviourPair{gd.TravelDown, gd.EB_Moving}
+		} else {
+			return DirBehaviourPair{gd.TravelStop, gd.EB_Idle}
+		}
+	default:
+		return DirBehaviourPair{gd.TravelStop, gd.EB_Idle}
 	}
 }
 
