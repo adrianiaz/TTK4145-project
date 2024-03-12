@@ -1,10 +1,10 @@
 package orderHandler
 
 import (
-	"github.com/adrianiaz/TTK4145-project/globaltypes"
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
-func orderHandler(ButtonPressCh chan ButtonEvent, NewOrderCh chan globaltypes.NewOrder) {
+func orderHandler(ButtonPressCh chan gd.ButtonEvent, NewOrderCh chan gd.NewOrder) {
 
 	for {
 		select {
@@ -12,10 +12,10 @@ func orderHandler(ButtonPressCh chan ButtonEvent, NewOrderCh chan globaltypes.Ne
 		case button := <-ButtonPressCh:
 			//Do something with the button event
 			//buttons := []ButtonEvent{button} //A slice of ButtonEvents
-			newOrder := globaltypes.NewOrder{
+			newOrder := gd.NewOrder{
 				Floor:      button.Floor,
 				BtnType:    button.Button,
-				ElevatorID: 0, //placeholder
+				ElevatorID: "0", //placeholder
 			}
 			NewOrderCh <- newOrder
 		}
