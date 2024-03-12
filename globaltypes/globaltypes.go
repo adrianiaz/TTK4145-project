@@ -18,10 +18,10 @@ const (
 type TravelDir int
 
 type ElevatorState struct {
+	ElevatorID      string
 	Floor           int
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
-	ElevatorID      string
 	Requests        [N_FLOORS][N_BUTTONS]bool
 }
 
@@ -41,13 +41,13 @@ const (
 //order structs and Ledger struct and member functions
 
 type NewOrder struct {
-	ElevatorID int
+	ElevatorID string
 	Floor      int
 	BtnType    ButtonType
 }
 
 type CompletedOrder struct {
-	ElevatorID int
+	ElevatorID string
 	Floor      int
 	OrderID    int
 }
