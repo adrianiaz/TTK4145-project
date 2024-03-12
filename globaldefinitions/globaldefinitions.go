@@ -17,8 +17,6 @@ const (
 
 type Orders2D [N_FLOORS][N_BUTTONS]bool
 
-type AllOrders map[string]Orders2D //all the order matrices for all the elevators
-
 type TravelDir int
 
 type ElevatorState struct {
@@ -68,12 +66,14 @@ type ActiveOrder struct {
 	ToFloor    int
 }
 
+type AllOrders map[string]Orders2D //all the order matrices for all the elevators
+type AllElevatorStates map[string]ElevatorState
 type Ledger struct {
 	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
-	ActiveOrders    map[string][]ActiveOrder `json:"activeOrders"`
-	ElevatorStates  []ElevatorState          `json:"elevatorStates"`
-	BackupMasterlst []string                 `json:"backupMaster"`
-	Alive           []bool                   `json:"alive"`
+	ActiveOrders    AllOrders         `json:"activeOrders"`
+	ElevatorStates  AllElevatorStates `json:"elevatorStates"`
+	BackupMasterlst []string          `json:"backupMaster"`
+	Alive           []bool            `json:"alive"`
 }
 
 func Serialize(ledger Ledger) (string, error) {
