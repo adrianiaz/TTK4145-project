@@ -22,10 +22,10 @@ type AllOrders map[string]orders2D //all the order matrices for all the elevator
 type TravelDir int
 
 type ElevatorState struct {
+	ElevatorID      string
 	Floor           int
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
-	ElevatorID      string
 	Requests        orders2D
 }
 
@@ -35,10 +35,40 @@ const (
 	TravelUp
 )
 
+type ButtonType int
+
+const (
+	BT_HallUp   ButtonType = 0
+	BT_HallDown ButtonType = 1
+	BT_Cab      ButtonType = 2
+)
+
+//order structs and Ledger struct and member functions
+
+type NewOrder struct {
+	ElevatorID string
+	Floor      int
+	BtnType    ButtonType
+}
+
+type CompletedOrder struct {
+	ElevatorID string
+	Floor      int
+	OrderID    int
+}
+type ActiveOrder struct {
+	ElevatorID string
+	OrderID    int
+	FromFloor  int
+	ToFloor    int
+}
+
 type Ledger struct {
-	BackupMaster []string `json:"backupMaster"` //maby int instead og string if use of IP?
-	Alive        []string `json:"alive"`
-	Orders       []string `json:"orders"`
+	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
+	ActiveOrders    map[string][]ActiveOrder `json:"activeOrders"`
+	ElevatorStates  []ElevatorState          `json:"elevatorStates"`
+	BackupMasterlst []string                 `json:"backupMaster"`
+	Alive           []bool                   `json:"alive"`
 }
 
 func Serialize(ledger Ledger) (string, error) {
@@ -57,17 +87,4 @@ func Deserialize(ledgerJson string) (*Ledger, error) {
 		return nil, err
 	}
 	return &ledger, nil
-}
-
-type ButtonType int
-
-type NewOrder struct {
-	Floor      int
-	BtnType    ButtonType
-	ElevatorID int
-}
-
-type CompletedOrder struct {
-	ElevatorID int
-	Floor      int
 }
