@@ -137,7 +137,7 @@ func GetFloor() int {
 }
 
 func GetStop() bool {
-	a := read([4]byte{8, 0, 0, 0})
+	a := read([4]byte{8, 0, 0, 0}) //consider adding mtx.Lock() and mtx.Unlock()
 	return toBool(a[1])
 }
 
