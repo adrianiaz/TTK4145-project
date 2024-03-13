@@ -185,7 +185,7 @@ func (elev Elevator) elevatorShouldStop() bool {
 	}
 }
 
-func (elev Elevator) clearOrdersAtCurrenFloor2() {
+func (elev Elevator) clearOrdersAtCurrenFloor() {
 	switch elev.State.Config.ClearRequestVariant {
 	case gd.CRV_All:
 		for btn := 0; btn < gd.N_BUTTONS; btn++ {
@@ -214,12 +214,12 @@ func (elev Elevator) clearOrdersAtCurrenFloor2() {
 	}
 }
 
-// have to see if this will be necessary here
+/* // have to see if this will be necessary here
 func (elev Elevator) clearOrdersAtCurrentFloor() {
 	for btn := 0; btn < gd.N_BUTTONS; btn++ {
 		elev.orders[elev.State.Floor][btn] = false
 	}
-}
+} */
 
 // have to see if this will be necessary here
 func (elev Elevator) clearLightsAtCurrentFloor() {
