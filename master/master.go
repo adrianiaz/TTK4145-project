@@ -1,73 +1,50 @@
 package master
 
 import (
-	"fmt"
-
-	"github.com/adrianiaz/TTK4145-project/globaltypes"
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
 //uses ordersToMasterch for both newOrders and completedOrders
 
-func Master(ordersToMasterCh <-chan interface{}) {
+// type Ledger struct {
+// 	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
+// 	ActiveOrders    AllOrders         `json:"activeOrders"`
+// 	ElevatorStates  AllElevatorStates `json:"elevatorStates"`
+// 	BackupMasterlst []string          `json:"backupMaster"`
+// 	Alive           []bool            `json:"alive"`
+// }
+
+func Master(ordersToMasterCh <-chan gd.Order) {
 	//initialize a ledger with default values
-	ledger := globaltypes.Ledger{}
+	ledger := gd.Ledger{
+		ActiveOrders:    make(gd.AllOrders),
+		ElevatorStates:  make(gd.AllElevatorStates),
+		BackupMasterlst: make([]string, 0),
+		Alive:           make([]bool, 0),
+	}
 	for {
 		select {
 		case order := <-ordersToMasterCh:
-			switch order := order.(type) {
-			case globaltypes.NewOrder:
-				if order.BtnType == globaltypes.BT_Cab {
-					//append a new active order to the ActiveOrders slice with elevatorID as key
-					newActiveOrder := globaltypes.ActiveOrder{
-						ElevatorID: order.ElevatorID,
-						OrderID:    assignOrderID(ledger.ActiveOrders[order.ElevatorID]),
-						ToFloor:    order.Floor,
-						FromFloor:  0, //placeholder, need to get the fromFloor from the elevatorState
-					}
-					ledger.ActiveOrders[order.ElevatorID] = append(ledger.ActiveOrders[order.ElevatorID], newActiveOrder)
+			switch order.NewOrder {
+			case true:
+				if order.BtnType == gd.BT_Cab {
+					ledger.ActiveOrders[order.ElevatorID] = updateLedger(ledger, order, true)
 				} else { //hallcall up or down
 					//find the elevator with the least distance to the order
 					//append a new active order to the ActiveOrders slice with elevatorID as key
 					//send the new active order to the elevator
 					return
 				}
-			case globaltypes.CompletedOrder:
-				//remove the completed order from ActiveOrders and rewrites to ledger
-				ledger.ActiveOrders[order.ElevatorID] = newActiveOrderlst(ledger.ActiveOrders[order.ElevatorID], order.OrderID)
+			case false:
+				ledger.ActiveOrders[order.ElevatorID] = updateLedger(ledger, order, false)
 			}
 
 		}
 	}
 }
 
-// ElevatorID is local to each elevator, so two elevators can have and order with the same OrderID
-func assignOrderID(elevatorActiveOrders []globaltypes.ActiveOrder) int {
-	//find the highest orderID in the slice and return orderID+1
-	highestOrderID := 0
-	for _, order := range elevatorActiveOrders {
-		if order.OrderID > highestOrderID {
-			highestOrderID = order.OrderID
-		}
-	}
-	return highestOrderID + 1
-}
-
-func findOrderIndex(activeOrders []globaltypes.ActiveOrder, orderID int) int {
-	for i, order := range activeOrders {
-		if order.OrderID == orderID {
-			return i
-		}
-	}
-	fmt.Println("Order not found")
-	return -1
-}
-
-func newActiveOrderlst(elevatorActiveOrders []globaltypes.ActiveOrder, orderID int) []globaltypes.ActiveOrder {
-	index := findOrderIndex(elevatorActiveOrders, orderID)
-	if index == -1 {
-		fmt.Println("No new order, returning original list")
-		return elevatorActiveOrders
-	}
-	elevatorActiveOrders[index] = elevatorActiveOrders[len(elevatorActiveOrders)-1]
-	return elevatorActiveOrders[:len(elevatorActiveOrders)-1]
+func updateLedger(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Orders2D {
+	orderToChange := ledger.ActiveOrders[order.ElevatorID]
+	orderToChange[order.Floor][int(order.BtnType)] = orderChange
+	return orderToChange
 }
