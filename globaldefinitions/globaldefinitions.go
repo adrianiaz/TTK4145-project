@@ -15,6 +15,12 @@ const (
 	EB_Moving
 )
 
+type ElevatorConfig struct {
+	ClearRequestVariant ClearRequestVariant
+}
+
+type ClearRequestVariant int
+
 type Orders2D [N_FLOORS][N_BUTTONS]bool
 
 type AllOrders map[string]Orders2D //all the order matrices for all the elevators
@@ -27,7 +33,13 @@ type ElevatorState struct {
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
 	Requests        Orders2D
+	Config          ElevatorConfig
 }
+
+const (
+	CRV_All ClearRequestVariant = iota
+	CRV_InMotorDir
+)
 
 const (
 	TravelDown TravelDir = iota - 1
