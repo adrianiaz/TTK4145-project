@@ -37,10 +37,15 @@ func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
 		panic("OS not supported")
 	}
 
-	//create a map of HRAElevState structs
-
+	//instantiate a map of HRAElevState structs
+	stateMap := make(map[string]HRAElevState)
 	for elevatorID, state := range states {
-
+		stateMap[elevatorID] = HRAElevState{
+			Behavior:    string(state.Behaviour),
+			Floor:       state.Floor,
+			Direction:   string(state.TravelDirection),
+			CabRequests: state.Requests[state.Floor],
+		}
 	}
 
 	input := HRAInput{
@@ -89,4 +94,15 @@ func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
 
 func orderSplitter() {
 
+}
+
+func extractCabRequests(allElevStates gd.AllElevatorStates) map[string][]bool {
+	CabRequestMap := make(map[string][]bool) // Initialize CabRequestMap as an empty map
+	for _, state := range allElevStates {
+		CabRequestMap[state.ElevatorID] = []bool{} // Initialize each elevator's floor requests as an empty array
+		for floor := range state.Requests {
+			CabRequestMap[state.ElevatorID] = append(CabRequestMap[state.ElevatorID], state.Requests[floor][gd.BT_Cab])
+		}
+	}
+	return CabRequestMap
 }
