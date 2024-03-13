@@ -1,4 +1,4 @@
-package globaltypes
+package globaldefinitions
 
 import "encoding/json"
 
@@ -48,26 +48,16 @@ type ButtonEvent struct {
 
 //order structs and Ledger struct and member functions
 
-type NewOrder struct {
+type Order struct {
+	NewOrder   bool //true if newOrder false if completed
 	ElevatorID string
 	Floor      int
 	BtnType    ButtonType
 }
 
-type CompletedOrder struct {
-	ElevatorID string
-	Floor      int
-	OrderID    int
-}
-type ActiveOrder struct {
-	ElevatorID string
-	OrderID    int
-	FromFloor  int
-	ToFloor    int
-}
-
 type AllOrders map[string]Orders2D //all the order matrices for all the elevators
 type AllElevatorStates map[string]ElevatorState
+
 type Ledger struct {
 	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
 	ActiveOrders    AllOrders         `json:"activeOrders"`
