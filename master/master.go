@@ -3,28 +3,40 @@ package master
 import (
 	"fmt"
 
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 	"github.com/adrianiaz/TTK4145-project/globaltypes"
 )
 
 //uses ordersToMasterch for both newOrders and completedOrders
 
+// type Ledger struct {
+// 	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
+// 	ActiveOrders    AllOrders         `json:"activeOrders"`
+// 	ElevatorStates  AllElevatorStates `json:"elevatorStates"`
+// 	BackupMasterlst []string          `json:"backupMaster"`
+// 	Alive           []bool            `json:"alive"`
+// }
+
 func Master(ordersToMasterCh <-chan interface{}) {
 	//initialize a ledger with default values
-	ledger := globaltypes.Ledger{}
+	ledger := gd.Ledger{
+		ActiveOrders:    make(gd.AllOrders),
+		ElevatorStates:  make(gd.AllElevatorStates),
+		BackupMasterlst: make([]string, 0),
+		Alive:           make([]bool, 0),
+	}
 	for {
 		select {
 		case order := <-ordersToMasterCh:
 			switch order := order.(type) {
-			case globaltypes.NewOrder:
-				if order.BtnType == globaltypes.BT_Cab {
-					//append a new active order to the ActiveOrders slice with elevatorID as key
-					newActiveOrder := globaltypes.ActiveOrder{
-						ElevatorID: order.ElevatorID,
-						OrderID:    assignOrderID(ledger.ActiveOrders[order.ElevatorID]),
-						ToFloor:    order.Floor,
-						FromFloor:  0, //placeholder, need to get the fromFloor from the elevatorState
-					}
-					ledger.ActiveOrders[order.ElevatorID] = append(ledger.ActiveOrders[order.ElevatorID], newActiveOrder)
+			case gd.NewOrder:
+				if order.BtnType == gd.BT_Cab {
+					//ledger.ActiveOrders[order.ElevatorID] = gd.Orders2D{}
+					activeOrders := ledger.ActiveOrders[order.ElevatorID]
+					activeOrders[order.Floor][int(order.BtnType)] = true
+					ledger.ActiveOrders[order.ElevatorID] = activeOrders
+					//send the new active order to the elevator
+
 				} else { //hallcall up or down
 					//find the elevator with the least distance to the order
 					//append a new active order to the ActiveOrders slice with elevatorID as key
