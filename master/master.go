@@ -30,9 +30,7 @@ func Master(ordersToMasterCh <-chan gd.Order) {
 				if order.BtnType == gd.BT_Cab {
 					ledger.ActiveOrders[order.ElevatorID] = updateLedger(ledger, order, true)
 				} else { //hallcall up or down
-					//find the elevator with the least distance to the order
-					//append a new active order to the ActiveOrders slice with elevatorID as key
-					//send the new active order to the elevator
+					allHallrequests := findAllHallRequests(ledger.ActiveOrders) // Need to include new order in this
 					return
 				}
 			case false:
@@ -47,4 +45,21 @@ func updateLedger(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Orders2
 	orderToChange := ledger.ActiveOrders[order.ElevatorID]
 	orderToChange[order.Floor][int(order.BtnType)] = orderChange
 	return orderToChange
+}
+
+// should put hall requests for a floor in a
+func findAllHallRequests(allorders gd.AllOrders) [gd.N_FLOORS][2]bool {
+	var allHallRequests [gd.N_FLOORS][2]bool
+	//loop through the gd.AllOrders map
+	for _, elevator := range allorders {
+		for floor := 0; floor < gd.N_FLOORS; floor++ {
+			for btnType := 0; btnType < 2; btnType++ {
+				if elevator[floor][btnType] {
+					allHallRequests[floor][btnType] = true
+				}
+			}
+
+		}
+	}
+	return allHallRequests
 }

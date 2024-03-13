@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	gd "github.com/adrianiaz/TTK4145-project/globaltypes"
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
 // Struct members must be public in order to be accessible by json.Marshal/.Unmarshal
@@ -25,7 +25,8 @@ type HRAInput struct {
 }
 
 // takes in the elevator state returns the new hallorders for the elevators
-func HRA(elevatorState gd.ElevatorState) {
+func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
+
 	hraExecutable := ""
 	switch runtime.GOOS {
 	case "linux":
@@ -36,8 +37,14 @@ func HRA(elevatorState gd.ElevatorState) {
 		panic("OS not supported")
 	}
 
+	//create a map of HRAElevState structs
+
+	for elevatorID, state := range states {
+
+	}
+
 	input := HRAInput{
-		HallRequests: [][2]bool{{false, false}, {true, false}, {false, false}, {false, true}},
+		HallRequests: allHallRequests,
 		States: map[string]HRAElevState{
 			"one": HRAElevState{
 				Behavior:    "moving",
@@ -78,4 +85,8 @@ func HRA(elevatorState gd.ElevatorState) {
 	for k, v := range *output {
 		fmt.Printf("%6v :  %+v\n", k, v)
 	}
+}
+
+func orderSplitter() {
+
 }
