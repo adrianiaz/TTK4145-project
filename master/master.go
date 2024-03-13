@@ -48,8 +48,8 @@ func updateLedger(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Orders2
 }
 
 // should put hall requests for a floor in a
-func findAllHallRequests(allorders gd.AllOrders) [gd.N_FLOORS][2]bool {
-	var allHallRequests [gd.N_FLOORS][2]bool
+func findAllHallRequests(allorders gd.AllOrders) [][2]bool {
+	var allHallRequests [][2]bool
 	//loop through the gd.AllOrders map
 	for _, elevator := range allorders {
 		for floor := 0; floor < gd.N_FLOORS; floor++ {
@@ -58,7 +58,6 @@ func findAllHallRequests(allorders gd.AllOrders) [gd.N_FLOORS][2]bool {
 					allHallRequests[floor][btnType] = true
 				}
 			}
-
 		}
 	}
 	return allHallRequests

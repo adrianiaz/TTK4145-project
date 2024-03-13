@@ -25,7 +25,7 @@ type HRAInput struct {
 }
 
 // takes in the elevator state returns the new hallorders for the elevators
-func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
+func HRA(allHallRequests [][2]bool, states gd.AllElevatorStates) {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -37,6 +37,9 @@ func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
 		panic("OS not supported")
 	}
 
+	//extract cab requests from allElevStates
+	cabRequestMap := extractCabRequests(states)
+
 	//instantiate a map of HRAElevState structs
 	stateMap := make(map[string]HRAElevState)
 	for elevatorID, state := range states {
@@ -44,26 +47,13 @@ func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
 			Behavior:    string(state.Behaviour),
 			Floor:       state.Floor,
 			Direction:   string(state.TravelDirection),
-			CabRequests: state.Requests[state.Floor],
+			CabRequests: cabRequestMap[elevatorID],
 		}
 	}
 
 	input := HRAInput{
 		HallRequests: allHallRequests,
-		States: map[string]HRAElevState{
-			"one": HRAElevState{
-				Behavior:    "moving",
-				Floor:       2,
-				Direction:   "up",
-				CabRequests: []bool{false, false, false, true},
-			},
-			"two": HRAElevState{
-				Behavior:    "idle",
-				Floor:       0,
-				Direction:   "stop",
-				CabRequests: []bool{false, false, false, false},
-			},
-		},
+		States:       stateMap,
 	}
 
 	jsonBytes, err := json.Marshal(input)
@@ -92,17 +82,13 @@ func HRA(allHallRequests [gd.N_FLOORS][2]bool, states gd.AllElevatorStates) {
 	}
 }
 
-func orderSplitter() {
-
-}
-
 func extractCabRequests(allElevStates gd.AllElevatorStates) map[string][]bool {
-	CabRequestMap := make(map[string][]bool) // Initialize CabRequestMap as an empty map
+	cabRequestMap := make(map[string][]bool) // Initialize CabRequestMap as an empty map
 	for _, state := range allElevStates {
-		CabRequestMap[state.ElevatorID] = []bool{} // Initialize each elevator's floor requests as an empty array
+		cabRequestMap[state.ElevatorID] = []bool{} // Initialize each elevator's floor requests as an empty array
 		for floor := range state.Requests {
-			CabRequestMap[state.ElevatorID] = append(CabRequestMap[state.ElevatorID], state.Requests[floor][gd.BT_Cab])
+			cabRequestMap[state.ElevatorID] = append(cabRequestMap[state.ElevatorID], state.Requests[floor][gd.BT_Cab])
 		}
 	}
-	return CabRequestMap
+	return cabRequestMap
 }
