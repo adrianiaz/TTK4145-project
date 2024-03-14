@@ -1,5 +1,8 @@
 package localip
 
+//Finding your own local IP address can be done with the LocalIP convenience function,
+// but only when you are connected to the internet.
+
 import (
 	"net"
 	"strings"
