@@ -1,30 +1,71 @@
 package network
 
-import "fmt"
+import (
+	"fmt"
+
+	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
+	"github.com/adrianiaz/TTK4145-project/network/bcast"
+	"github.com/adrianiaz/TTK4145-project/network/peers"
+)
 
 // placeholder struct
 type Ledger struct {
 	orderRequests int
 }
 
-func startNetworkModule(downstreamLedgerCh chan Ledger, newOrderCh chan []int, servicedOrderCh chan []int) {
+func startNetworkModule(
+	ledgerRx chan gd.Ledger,
+	ledgerTx chan gd.Ledger,
+	singleOrderRx chan gd.Order,
+	singleOrderTx chan gd.Order,
 
-	//placeholder information
-	ledgerplaceholder := Ledger{orderRequests: 0}
+	peerUpdateCh chan peers.PeerUpdate,
+	peerTxEnable chan bool,
+
+	ledger_toOrderHandler chan<- gd.Ledger,
+	ledgerMasterCh <-chan gd.Ledger,
+	order_fromOrderHandler <-chan gd.Order,
+	order_toMaster chan<- gd.Order,
+) {
+
+	id := "placeholderID"
+
+	go peers.Transmitter(15647, id, peerTxEnable)
+	go peers.Receiver(15647, peerUpdateCh)
+
+	go bcast.Transmitter(16569, ledgerTx)
+	go bcast.Receiver(16569, ledgerRx)
+
+	go bcast.Transmitter(16570, singleOrderTx)
+	go bcast.Receiver(16570, singleOrderRx)
 
 	for {
 		select {
-		case ledger := <-downstreamLedgerCh:
-			// Placeholder: Handle incoming ledger data
-			fmt.Println("Received downstream ledger:", ledger)
-			fmt.Println(ledgerplaceholder.orderRequests)
-		case newOrder := <-newOrderCh:
-			// Placeholder: Handle incoming new order
-			fmt.Println("Received new order:", newOrder)
-		case servicedOrder := <-servicedOrderCh:
-			// Placeholder: Handle incoming serviced order
-			fmt.Println("Received serviced order:", servicedOrder)
-		}
+		case p := <-peerUpdateCh:
+			fmt.Printf("Peer update:\n")
+			fmt.Printf("  Peers:    %q\n", p.Peers)
+			fmt.Printf("  New:      %q\n", p.New)
+			fmt.Printf("  Lost:     %q\n", p.Lost)
 
+		//Send new peerlist to master, so that it can write to ledger who is alive
+		case ledger := <-ledgerRx:
+			if id == "master" {
+				break
+			}
+			ledger_toOrderHandler <- ledger
+
+		case ledger := <-ledgerMasterCh: //only happens if current node is master
+			ledgerTx <- ledger
+			ledger_toOrderHandler <- ledger //send to order module
+
+		case order := <-order_fromOrderHandler:
+			if id == "master" {
+				order_toMaster <- order
+			} else {
+				singleOrderTx <- order
+			}
+		case order := <-singleOrderRx:
+			order_toMaster <- order
+		}
 	}
 }
