@@ -25,7 +25,7 @@ type HRAInput struct {
 }
 
 // takes in the elevator state returns the new hallorders for the elevators
-func HRA(allHallRequests [][2]bool, states gd.AllElevatorStates) {
+func extractOptimalHallRequests(ledger gd.Ledger, newHallRequest gd.Order) map[string][][2]bool {
 
 	hraExecutable := ""
 	switch runtime.GOOS {
@@ -37,16 +37,19 @@ func HRA(allHallRequests [][2]bool, states gd.AllElevatorStates) {
 		panic("OS not supported")
 	}
 
-	//extract cab requests from allElevStates
+	states := ledger.ElevatorStates
+	allHallRequests := findAllHallRequests(ledger.ActiveOrders, newHallRequest) // Need to include new order in this
 	cabRequestMap := extractCabRequests(states)
+
+	optimalHallRequests := new(map[string][][2]bool)
 
 	//instantiate a map of HRAElevState structs
 	stateMap := make(map[string]HRAElevState)
 	for elevatorID, state := range states {
 		stateMap[elevatorID] = HRAElevState{
-			Behavior:    string(state.Behaviour),
+			Behavior:    fmt.Sprint(state.Behaviour),
 			Floor:       state.Floor,
-			Direction:   string(state.TravelDirection),
+			Direction:   fmt.Sprint(state.TravelDirection),
 			CabRequests: cabRequestMap[elevatorID],
 		}
 	}
@@ -59,27 +62,27 @@ func HRA(allHallRequests [][2]bool, states gd.AllElevatorStates) {
 	jsonBytes, err := json.Marshal(input)
 	if err != nil {
 		fmt.Println("json.Marshal error: ", err)
-		return
+		return *optimalHallRequests
 	}
 
 	ret, err := exec.Command("../hall_request_assigner/"+hraExecutable, "-i", string(jsonBytes)).CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)
 		fmt.Println(string(ret))
-		return
+		return *optimalHallRequests
 	}
 
-	output := new(map[string][][2]bool)
-	err = json.Unmarshal(ret, &output)
+	err = json.Unmarshal(ret, &optimalHallRequests)
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
-		return
+		return *optimalHallRequests
 	}
 
 	fmt.Printf("output: \n")
-	for k, v := range *output {
+	for k, v := range *optimalHallRequests {
 		fmt.Printf("%6v :  %+v\n", k, v)
 	}
+	return *optimalHallRequests
 }
 
 func extractCabRequests(allElevStates gd.AllElevatorStates) map[string][]bool {
@@ -91,4 +94,17 @@ func extractCabRequests(allElevStates gd.AllElevatorStates) map[string][]bool {
 		}
 	}
 	return cabRequestMap
+}
+
+func findAllHallRequests(allorders gd.AllOrders, newHallRequest gd.Order) [][2]bool {
+	allHallRequests := make([][2]bool, gd.N_FLOORS)
+	for _, elevator := range allorders {
+		for floor := 0; floor < gd.N_FLOORS; floor++ {
+			for btnType := 0; btnType < 2; btnType++ {
+				allHallRequests[floor][btnType] = elevator[floor][btnType]
+			}
+		}
+	}
+	allHallRequests[newHallRequest.Floor][int(newHallRequest.BtnType)] = true
+	return allHallRequests
 }
