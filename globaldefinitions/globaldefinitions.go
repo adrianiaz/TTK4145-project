@@ -1,6 +1,8 @@
 package globaltypes
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 const (
 	N_FLOORS  = 4
@@ -37,8 +39,8 @@ type ElevatorState struct {
 }
 
 const (
-	CRV_All ClearRequestVariant = iota
-	CRV_InMotorDir
+	ClearRequests_All ClearRequestVariant = iota
+	ClearRequests_InMotorDir
 )
 
 const (
