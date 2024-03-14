@@ -31,6 +31,16 @@ func Master(ordersToMasterCh <-chan gd.Order) {
 					ledger.ActiveOrders[order.ElevatorID] = updateLedger(ledger, order, true)
 				} else { //hallcall up or down
 					allHallrequests := findAllHallRequests(ledger.ActiveOrders) // Need to include new order in this
+					allHallrequests[order.Floor][int(order.BtnType)] = true
+
+					//send allHallRequests to hallrequestassigner
+					optimalHallReuests := extractOptimalHallRequests(allHallrequests, ledger.ElevatorStates)
+
+					//make relevant changes to the ledger
+					for elevatorID, activeOrders := range ledger.ActiveOrders {
+						ledger.ActiveOrders[elevatorID] = updateLedger(ledger, order, false)
+
+					}
 					return
 				}
 			case false:
