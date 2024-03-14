@@ -28,47 +28,28 @@ func Master(ordersToMasterCh <-chan gd.Order) {
 			switch order.NewOrder {
 			case true:
 				if order.BtnType == gd.BT_Cab {
-					ledger.ActiveOrders[order.ElevatorID] = updateLedger(ledger, order, true)
-				} else { //hallcall up or down
-					allHallrequests := findAllHallRequests(ledger.ActiveOrders) // Need to include new order in this
-					allHallrequests[order.Floor][int(order.BtnType)] = true
+					ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, true)
+				} else { //hall request
 
-					//send allHallRequests to hallrequestassigner
-					optimalHallReuests := extractOptimalHallRequests(allHallrequests, ledger.ElevatorStates)
-
-					//make relevant changes to the ledger
-					for elevatorID, activeOrders := range ledger.ActiveOrders {
-						ledger.ActiveOrders[elevatorID] = updateLedger(ledger, order, false)
-
+					OptimalHallReqAssignment := extractOptimalHallRequests(ledger, order)
+					for elevatorID := range ledger.ActiveOrders {
+						elevatorOrders := ledger.ActiveOrders[elevatorID]
+						for floor := 0; floor < gd.N_FLOORS; floor++ {
+							for btnType := 0; btnType < 2; btnType++ {
+								elevatorOrders[floor][btnType] = OptimalHallReqAssignment[elevatorID][floor][btnType]
+							}
+						}
 					}
-					return
 				}
 			case false:
-				ledger.ActiveOrders[order.ElevatorID] = updateLedger(ledger, order, false)
+				ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, false)
 			}
-
 		}
 	}
 }
 
-func updateLedger(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Orders2D {
+func updateSingleOrder(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Orders2D {
 	orderToChange := ledger.ActiveOrders[order.ElevatorID]
 	orderToChange[order.Floor][int(order.BtnType)] = orderChange
 	return orderToChange
-}
-
-// should put hall requests for a floor in a
-func findAllHallRequests(allorders gd.AllOrders) [][2]bool {
-	var allHallRequests [][2]bool
-	//loop through the gd.AllOrders map
-	for _, elevator := range allorders {
-		for floor := 0; floor < gd.N_FLOORS; floor++ {
-			for btnType := 0; btnType < 2; btnType++ {
-				if elevator[floor][btnType] {
-					allHallRequests[floor][btnType] = true
-				}
-			}
-		}
-	}
-	return allHallRequests
 }
