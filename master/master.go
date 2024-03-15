@@ -65,7 +65,7 @@ slaveLoop:
 
 			}
 		case alivePeers := <-alive_fromWatchDog:
-
+			ledger.BackupMasterlst = sortAndRemoveOwnID(alivePeers, "master")
 		}
 	}
 }
@@ -91,8 +91,8 @@ func sortAndRemoveOwnID(alivePeers []string, ownId string) []string {
 	sort.Ints(intPeers)
 	//convert back to string in same order as before
 	var sortedPeers []string
-	for i, peer := range intPeers {
-		sortedPeers[i] = strconv.Itoa(peer)
+	for _, peer := range intPeers {
+		sortedPeers = append(sortedPeers, strconv.Itoa(peer))
 	}
 
 	return sortedPeers
