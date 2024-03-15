@@ -14,7 +14,10 @@ import (
 // 	Alive           []bool            `json:"alive"`
 // }
 
-func Master(ordersToMasterCh <-chan gd.Order) {
+func Master(
+	ordersToMasterCh <-chan gd.Order,
+	isMaster <-chan bool,
+) {
 	//initialize a ledger with default values
 	ledger := gd.Ledger{
 		ActiveOrders:    make(gd.AllOrders),
@@ -22,6 +25,17 @@ func Master(ordersToMasterCh <-chan gd.Order) {
 		BackupMasterlst: make([]string, 0),
 		Alive:           make([]bool, 0),
 	}
+
+slaveLoop:
+	for {
+		select {
+		case <-isMaster:
+			//break out of for-loop and start mastermode
+			break slaveLoop
+		}
+	}
+
+	//masterLoop
 	for {
 		select {
 		case order := <-ordersToMasterCh:
