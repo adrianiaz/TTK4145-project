@@ -1,6 +1,10 @@
 package master
 
 import (
+	"fmt"
+	"sort"
+	"strconv"
+
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
@@ -17,6 +21,7 @@ import (
 func Master(
 	ordersToMasterCh <-chan gd.Order,
 	isMaster <-chan bool,
+	alive_fromWatchDog <-chan []string,
 ) {
 	//initialize a ledger with default values
 	ledger := gd.Ledger{
@@ -57,7 +62,10 @@ slaveLoop:
 				}
 			case false:
 				ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, false)
+
 			}
+		case alivePeers := <-alive_fromWatchDog:
+
 		}
 	}
 }
@@ -66,4 +74,26 @@ func updateSingleOrder(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Or
 	orderToChange := ledger.ActiveOrders[order.ElevatorID]
 	orderToChange[order.Floor][int(order.BtnType)] = orderChange
 	return orderToChange
+}
+
+func sortAndRemoveOwnID(alivePeers []string, ownId string) []string {
+	var intPeers []int
+	for _, peer := range alivePeers {
+		if peer != ownId {
+			intPeer, err := strconv.Atoi(peer)
+			if err != nil {
+				fmt.Printf("Error converting string to int: %v\n", err)
+				return alivePeers
+			}
+			intPeers = append(intPeers, intPeer)
+		}
+	}
+	sort.Ints(intPeers)
+	//convert back to string in same order as before
+	var sortedPeers []string
+	for i, peer := range intPeers {
+		sortedPeers[i] = strconv.Itoa(peer)
+	}
+
+	return sortedPeers
 }

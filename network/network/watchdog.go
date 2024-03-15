@@ -9,6 +9,7 @@ func WatchDog(
 	peerUpdateCh chan peers.PeerUpdate,
 	peerTxEnable chan bool,
 	isMaster chan<- bool,
+	alive_toMaster chan<- []string,
 
 	ledger_toWatchdog <-chan gd.Ledger,
 ) {
@@ -29,6 +30,7 @@ func WatchDog(
 					}
 				}
 			}
+			alive_toMaster <- p.Peers
 		case ledger := <-ledger_toWatchdog:
 			localLedger = ledger
 		}
