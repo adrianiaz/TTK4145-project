@@ -1,6 +1,8 @@
 package globaldefinitions
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 const (
 	N_FLOORS  = 4
@@ -15,6 +17,12 @@ const (
 	EB_Moving
 )
 
+type ElevatorConfig struct {
+	ClearRequestVariant ClearRequestVariant
+}
+
+type ClearRequestVariant int
+
 type Orders2D [N_FLOORS][N_BUTTONS]bool
 
 type TravelDir int
@@ -25,7 +33,13 @@ type ElevatorState struct {
 	Behaviour       ElevatorBehaviour
 	TravelDirection TravelDir
 	Requests        Orders2D
+	Config          ElevatorConfig
 }
+
+const (
+	ClearRequests_All ClearRequestVariant = iota
+	ClearRequests_InMotorDir
+)
 
 const (
 	TravelDown TravelDir = iota - 1

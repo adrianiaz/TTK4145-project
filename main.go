@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	var id string
 	flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
