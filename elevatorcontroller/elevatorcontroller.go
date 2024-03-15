@@ -22,7 +22,10 @@ type ElevatorChannels struct {
 	btnPress         chan gd.ButtonEvent
 }
 
-const timeUntilTimeout time.Duration = 5 * time.Second
+const (
+	timeUntilTimeout    time.Duration = 10 * time.Second
+	timeUntilDoorCloses time.Duration = 3 * time.Second
+)
 
 func InitiateElevator(ElevatorID string, addr string, numFloors int) Elevator {
 	elevio.Init(addr, numFloors)
@@ -47,8 +50,8 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 	fmt.Println("ElevatorController started")
 	elev := InitiateElevator(ElevatorID, addr, numFloors)
 
-	doorOpened := make(chan bool, 100)
-	doorOpenDuration := time.NewTimer(3 * time.Second)
+	doorOpening := make(chan bool, 100)
+	doorOpenDuration := time.NewTimer(timeUntilDoorCloses)
 	doorOpenDuration.Stop()
 	timeoutTimer := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
 	elevio.SetDoorOpenLamp(false)
@@ -65,7 +68,7 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				if elev.shouldStop() {
 					elevio.SetMotorDirection(elevio.MD_Stop)
 					elev.clearOrdersAtCurrentFloor()
-					doorOpened <- true
+					doorOpening <- true
 					elev.setButtonLights() //with channel?, doublecheck if this is correct, in the line above the setDoorOpenLamp func is used
 					elev.State.Behaviour = gd.EB_Idle
 				}
@@ -81,10 +84,10 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				timeoutTimer.Stop()
 			}
 
-		case <-doorOpened:
+		case <-doorOpening:
 			fmt.Println("The door is open")
 			elevio.SetDoorOpenLamp(true)
-			doorOpenDuration.Reset(3 * time.Second)
+			doorOpenDuration.Reset(timeUntilDoorCloses)
 			elevio.SetDoorOpenLamp(false)
 			timeoutTimer.Stop()
 
@@ -92,8 +95,8 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 			obstruction := <-ch.ObstructionEvent //consider making this a case
 			if obstruction {
 				fmt.Println("Obstruction detected")
-				doorOpenDuration.Reset(3 * time.Second)
-				elevio.SetDoorOpenLamp(false)
+				doorOpenDuration.Reset(timeUntilDoorCloses)
+				//elevio.SetDoorOpenLamp(false)
 			}
 
 			fmt.Println("The door is closed")
@@ -107,9 +110,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 
 				switch elev.State.Behaviour {
 				case gd.EB_DoorOpen:
-					doorOpened <- true
-					elev.clearOrdersAtCurrentFloor()
-					elev.setButtonLights() //Doublecheck if this is correct
+					doorOpening <- true
+					elev.clearOrdersAtCurrentFloor() //update this function to turn off the lights as well
+					elev.setButtonLights()           //Doublecheck if this is correct
 				case gd.EB_Moving:
 					timeoutTimer.Reset(timeUntilTimeout)
 				case gd.EB_Idle:
@@ -126,7 +129,7 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 			switch elev.State.Behaviour {
 			case gd.EB_DoorOpen:
 				if clearOrdersImmediately(elev, btn.Floor, btn.Button) {
-					doorOpenDuration.Reset(3 * time.Second)
+					doorOpenDuration.Reset(timeUntilDoorCloses)
 				} else {
 					elev.orders[btn.Floor][btn.Button] = true
 					elev.lights[btn.Floor][btn.Button] = true
@@ -148,7 +151,7 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 
 				switch elev.State.Behaviour {
 				case gd.EB_DoorOpen:
-					doorOpened <- true
+					doorOpening <- true
 					elev.clearOrdersAtCurrentFloor()
 				case gd.EB_Moving:
 					elevio.SetMotorDirection(motordir)
@@ -160,9 +163,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 
 		case <-timeoutTimer.C:
 			fmt.Println("Elevator has timed out")
+			elev.State.Behaviour = gd.EB_Moving
 			elevio.SetMotorDirection(elevio.MD_Down)
 			elev.State.TravelDirection = gd.TravelDown
-			elev.State.Behaviour = gd.EB_Moving
 			//timeoutTimer.Reset(timeUntilTimeout)
 
 			/* default:
@@ -186,22 +189,6 @@ func (elev Elevator) fsm_onInitBetweenFloors() { //default case within startElev
 	elev.State.TravelDirection = gd.TravelDown
 	elev.State.Behaviour = gd.EB_Moving
 }
-
-/* func (elev Elevator) fsm_onFloorArrival() {
-	fmt.Println("Arriving at floor: ", elev.State.Floor)
-	elevio.SetFloorIndicator(elev.State.Floor)
-
-	switch elev.State.Behaviour {
-	case gd.EB_Moving:
-		if elev.shouldStop() {
-			elevio.SetMotorDirection(elevio.MD_Stop)
-			elevio.SetDoorOpenLamp(true)
-			elev.ClearOrdersAtCurrentFloor()
-			doorOpenTimer.Reset(3 * time.Second)
-
-		}
-	}
-} */
 
 func (elev Elevator) orderAbove() bool {
 	for floorAbove := elev.State.Floor + 1; floorAbove < gd.N_FLOORS; floorAbove++ {
@@ -308,8 +295,6 @@ func (elev Elevator) chooseDirection() DirBehaviourPair {
 }
 
 func (elev Elevator) shouldStop() bool {
-	//orderAbove := elev.orderAbove()
-	//orderBelow := elev.orderBelow()
 	currentFloor := elev.State.Floor
 
 	switch elev.State.TravelDirection {
@@ -331,26 +316,35 @@ func (elev Elevator) clearOrdersAtCurrentFloor() {
 	case gd.ClearRequests_All:
 		for btn := 0; btn < gd.N_BUTTONS; btn++ {
 			elev.orders[elev.State.Floor][btn] = false
+			elev.lights[elev.State.Floor][btn] = false
 		}
 
 	case gd.ClearRequests_InMotorDir:
 		elev.orders[elev.State.Floor][gd.BT_Cab] = false
+		elev.lights[elev.State.Floor][gd.BT_Cab] = false
 
 		switch elev.State.TravelDirection {
 		case gd.TravelUp:
 			if !elev.orderAbove() && !elev.orders[elev.State.Floor][gd.BT_HallUp] {
 				elev.orders[elev.State.Floor][gd.BT_HallDown] = false
+				elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 			}
 			elev.orders[elev.State.Floor][gd.BT_HallUp] = false
+			elev.lights[elev.State.Floor][gd.BT_HallUp] = false
 		case gd.TravelDown:
 			if !elev.orderBelow() && !elev.orders[elev.State.Floor][gd.BT_HallDown] {
 				elev.orders[elev.State.Floor][gd.BT_HallUp] = false
+				elev.lights[elev.State.Floor][gd.BT_HallUp] = false
+
 			}
 			elev.orders[elev.State.Floor][gd.BT_HallDown] = false
+			elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 		case gd.TravelStop:
 		default:
 			elev.orders[elev.State.Floor][gd.BT_HallUp] = false
 			elev.orders[elev.State.Floor][gd.BT_HallDown] = false
+			elev.lights[elev.State.Floor][gd.BT_HallUp] = false
+			elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 		}
 	}
 }
