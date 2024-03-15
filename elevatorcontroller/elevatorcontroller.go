@@ -20,6 +20,7 @@ type ElevatorChannels struct {
 	ObstructionEvent chan bool
 	StopCh           chan bool
 	btnPress         chan gd.ButtonEvent
+	toMaster         chan<- gd.ElevatorState
 }
 
 const timeUntilTimeout time.Duration = 5 * time.Second
@@ -52,6 +53,8 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 	doorOpenDuration.Stop()
 	timeoutTimer := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
 	elevio.SetDoorOpenLamp(false)
+
+	sendElevatorState := time.NewTimer(1 * time.Second)
 
 	for {
 		select {
@@ -157,6 +160,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 					timeoutTimer.Stop()
 				}
 			}
+		case <-sendElevatorState.C:
+			ch.toMaster <- elev.State
+			sendElevatorState.Reset(1 * time.Second)
 
 		case <-timeoutTimer.C:
 			fmt.Println("Elevator has timed out")
