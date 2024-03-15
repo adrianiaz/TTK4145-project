@@ -9,10 +9,10 @@ func orderHandlerModule(
 	ID string,
 	ButtonPressCh          <-chan gd.ButtonEvent, 
 	CompletedOrderCh       <-chan gd.ButtonEvent, //buttonEvent? or order or matrix?
-	LedgerFromMasterCh     <-chan gd.Ledger,      
-	OrderToMasterCh        chan<- gd.Order,       
-	OrdersToElevatorCtrlCh chan<- gd.Orders2D,    
-	LightCh                chan   gd.Orders2D,      
+	Ledger_fromMasterCh     <-chan gd.Ledger,      
+	Order_toMasterCh        chan<- gd.Order,       
+	Orders_toElevatorCtrlCh chan<- gd.Orders2D,    
+	LightCh                 chan   gd.Orders2D,      
 ) {
 
 	for {
@@ -25,11 +25,11 @@ func orderHandlerModule(
 				BtnType:    button.Button,
 				ElevatorID: ID,
 			}
-			OrderToMasterCh <- newOrder
+			Order_toMasterCh <- newOrder
 
-		case ledgerFromMaster := <-LedgerFromMasterCh:
+		case ledgerFromMaster := <-Ledger_fromMasterCh:
 			newLocalOrder2D := ledgerFromMaster.ActiveOrders[ID]
-			OrdersToElevatorCtrlCh <- newLocalOrder2D
+			Orders_toElevatorCtrlCh <- newLocalOrder2D
 
 			//set lights
 			lightMatrix := newLocalOrder2D
@@ -51,7 +51,7 @@ func orderHandlerModule(
 				Floor:      completedOrder.Floor,
 				BtnType:    completedOrder.Button,
 			}
-			OrderToMasterCh <- newCompletedOrder
+			Order_toMasterCh <- newCompletedOrder
 		}
 	}
 }

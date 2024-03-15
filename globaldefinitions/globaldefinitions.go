@@ -28,12 +28,12 @@ type Orders2D [N_FLOORS][N_BUTTONS]bool
 type TravelDir int
 
 type ElevatorState struct {
-	ElevatorID      string
-	Floor           int
-	Behaviour       ElevatorBehaviour
-	TravelDirection TravelDir
-	Requests        Orders2D
-	Config          ElevatorConfig
+	ElevatorID      string            `json:"elevatorID"`
+	Floor           int               `json:"floor"`
+	Behaviour       ElevatorBehaviour `json:"behaviour"`
+	TravelDirection TravelDir         `json:"travelDirection"`
+	Requests        Orders2D          `json:"requests"`
+	Config          ElevatorConfig    `json:"config"`
 }
 
 const (
@@ -63,10 +63,10 @@ type ButtonEvent struct {
 //order structs and Ledger struct and member functions
 
 type Order struct {
-	NewOrder   bool //true if newOrder false if completed
-	ElevatorID string
-	Floor      int
-	BtnType    ButtonType
+	NewOrder   bool       `json:"newOrder"` 		//true if newOrder false if completed
+	ElevatorID string     `json:"elevatorID"`
+	Floor      int        `json:"floor"`
+	BtnType    ButtonType `json:"btnType"`
 }
 
 type AllOrders map[string]Orders2D //all the order matrices for all the elevators
