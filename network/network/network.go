@@ -8,30 +8,32 @@ import (
 	"github.com/adrianiaz/TTK4145-project/network/peers"
 )
 
-// placeholder struct
-type Ledger struct {
-	orderRequests int
-}
-
-func startNetworkModule(
+func StartNetworkModule(
 	ledgerRx chan gd.Ledger,
 	ledgerTx chan gd.Ledger,
 	singleOrderRx chan gd.Order,
 	singleOrderTx chan gd.Order,
+	elevatorStateRx chan gd.ElevatorState,
+	elevatorStateTx chan gd.ElevatorState,
 
 	peerUpdateCh chan peers.PeerUpdate,
 	peerTxEnable chan bool,
 
 	ledger_toOrderHandler chan<- gd.Ledger,
-	ledgerMasterCh <-chan gd.Ledger,
+	ledger_fromMaster <-chan gd.Ledger,
 	order_fromOrderHandler <-chan gd.Order,
 	order_toMaster chan<- gd.Order,
+	elevatorState_toMaster chan<- gd.ElevatorState,
+	elevatorState_fromElevatorController <-chan gd.ElevatorState,
 ) {
 
 	id := "placeholderID"
 
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
+
+	go bcast.Transmitter(16568, elevatorStateTx)
+	go bcast.Receiver(16568, elevatorStateRx)
 
 	go bcast.Transmitter(16569, ledgerTx)
 	go bcast.Receiver(16569, ledgerRx)
@@ -54,7 +56,7 @@ func startNetworkModule(
 			}
 			ledger_toOrderHandler <- ledger
 
-		case ledger := <-ledgerMasterCh: //only happens if current node is master
+		case ledger := <-ledger_fromMaster: //only happens if current node is master
 			ledgerTx <- ledger
 			ledger_toOrderHandler <- ledger //send to order module
 
@@ -64,8 +66,24 @@ func startNetworkModule(
 			} else {
 				singleOrderTx <- order
 			}
+
 		case order := <-singleOrderRx:
-			order_toMaster <- order
+			if id == "master" {
+				order_toMaster <- order
+			}
+
+		case state := <-elevatorStateRx:
+			if id == "master" {
+				elevatorState_toMaster <- state
+			}
+
+		case state := <-elevatorState_fromElevatorController:
+			if id == "master" {
+				elevatorState_toMaster <- state
+			} else {
+				elevatorStateTx <- state
+			}
+
 		}
 	}
 }
