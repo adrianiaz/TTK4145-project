@@ -20,7 +20,7 @@ type ElevatorChannels struct {
 	ObstructionEvent chan bool
 	StopCh           chan bool
 	LocalLights2D    chan gd.Orders2D
-	LocalOrder2D  <-chan gd.Orders2D
+	LocalOrder2D     <-chan gd.Orders2D
 	ToMaster         chan<- gd.ElevatorState
 }
 
@@ -88,7 +88,7 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				elevio.SetMotorDirection(elevio.MD_Stop)
 				timeoutTimer.Stop()
 			}
-		ch.ToMaster <- elev.State
+			ch.ToMaster <- elev.State
 
 		case <-doorOpening:
 			fmt.Println("The door is open")
@@ -141,7 +141,6 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 			elev.lights = lightMatrix
 			elev.setButtonLights()
 
-
 		case orderMatrix := <-ch.LocalOrder2D: //navn endres
 			//fmt.Println("Button pressed at floor: ", btn.Floor, " Button type: ", btn.Button)
 			elev.orders = orderMatrix
@@ -159,7 +158,7 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 			case gd.EB_Idle:
 				if elev.orderAtCurrentFloor() {
 					elev.State.Behaviour = gd.EB_DoorOpen
-					doorOpened <- true
+					doorOpening <- true
 				} else {
 					elev.orders = orderMatrix
 					DirBehaviourPair := elev.chooseDirection()
@@ -169,9 +168,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 
 					switch elev.State.Behaviour {
 					case gd.EB_DoorOpen:
-						doorOpened <- true
+						doorOpening <- true
 						elev.clearOrdersAtCurrentFloor()
-            elev.setButtonLights()
+						elev.setButtonLights()
 					case gd.EB_Moving:
 						elevio.SetMotorDirection(motorDir)
 						timeoutTimer.Reset(timeUntilTimeout)
@@ -182,44 +181,44 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				DirBehaviourPair := elev.chooseDirection()
 				elev.State.Behaviour = DirBehaviourPair.Behaviour
 				elev.State.TravelDirection = DirBehaviourPair.Dir
-				
+
 			case gd.EB_Moving:
 
-			// switch elev.State.Behaviour {
-			// case gd.EB_DoorOpen:
-			// 	if clearOrdersImmediately(elev, btn.Floor, btn.Button) {
-			// 		doorOpenDuration.Reset(3 * time.Second)
-			// 	} else {
-			// 		elev.orders[btn.Floor][btn.Button] = true
-			// 		elev.lights[btn.Floor][btn.Button] = true
-			// 		//elev.setButtonLights()
-			// 	}
-			// 	timeoutTimer.Stop()
-			// case gd.EB_Moving:
-			// 	elev.orders[btn.Floor][btn.Button] = true
-			// 	elev.lights[btn.Floor][btn.Button] = true
+				// switch elev.State.Behaviour {
+				// case gd.EB_DoorOpen:
+				// 	if clearOrdersImmediately(elev, btn.Floor, btn.Button) {
+				// 		doorOpenDuration.Reset(3 * time.Second)
+				// 	} else {
+				// 		elev.orders[btn.Floor][btn.Button] = true
+				// 		elev.lights[btn.Floor][btn.Button] = true
+				// 		//elev.setButtonLights()
+				// 	}
+				// 	timeoutTimer.Stop()
+				// case gd.EB_Moving:
+				// 	elev.orders[btn.Floor][btn.Button] = true
+				// 	elev.lights[btn.Floor][btn.Button] = true
 
-			// case gd.EB_Idle:
-			// 	elev.orders[btn.Floor][btn.Button] = true
-			// 	elev.lights[btn.Floor][btn.Button] = true
+				// case gd.EB_Idle:
+				// 	elev.orders[btn.Floor][btn.Button] = true
+				// 	elev.lights[btn.Floor][btn.Button] = true
 
-			// 	DirBehaviourPair := elev.chooseDirection()
-			// 	elev.State.Behaviour = DirBehaviourPair.Behaviour
-			// 	elev.State.TravelDirection = DirBehaviourPair.Dir
-			// 	motordir := elevio.MotorDirection(elev.State.TravelDirection)
+				// 	DirBehaviourPair := elev.chooseDirection()
+				// 	elev.State.Behaviour = DirBehaviourPair.Behaviour
+				// 	elev.State.TravelDirection = DirBehaviourPair.Dir
+				// 	motordir := elevio.MotorDirection(elev.State.TravelDirection)
 
-			// 	switch elev.State.Behaviour {
-			// 	case gd.EB_DoorOpen:
-			// 		doorOpened <- true
-			// 		elev.clearOrdersAtCurrentFloor()
-			// 	case gd.EB_Moving:
-			// 		elevio.SetMotorDirection(motordir)
-			// 		timeoutTimer.Reset(timeUntilTimeout)
-			// 	case gd.EB_Idle:
-			// 		timeoutTimer.Stop()
-			// 	}
+				// 	switch elev.State.Behaviour {
+				// 	case gd.EB_DoorOpen:
+				// 		doorOpened <- true
+				// 		elev.clearOrdersAtCurrentFloor()
+				// 	case gd.EB_Moving:
+				// 		elevio.SetMotorDirection(motordir)
+				// 		timeoutTimer.Reset(timeUntilTimeout)
+				// 	case gd.EB_Idle:
+				// 		timeoutTimer.Stop()
+				// 	}
 			}
-      
+
 		case <-sendElevatorState.C:
 			ch.ToMaster <- elev.State
 			sendElevatorState.Reset(1 * time.Second)
