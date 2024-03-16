@@ -4,15 +4,14 @@ import (
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
-
-func orderHandlerModule(
+func OrderHandler(
 	ID string,
-	ButtonPressCh          <-chan gd.ButtonEvent, 
-	CompletedOrderCh       <-chan gd.ButtonEvent, //buttonEvent? or order or matrix?
-	Ledger_fromMasterCh     <-chan gd.Ledger,      
-	Order_toMasterCh        chan<- gd.Order,       
-	Orders_toElevatorCtrlCh chan<- gd.Orders2D,    
-	LightCh                 chan   gd.Orders2D,      
+	ButtonPressCh <-chan gd.ButtonEvent,
+	CompletedOrderCh <-chan gd.ButtonEvent, //buttonEvent? or order or matrix?
+	Ledger_fromMasterCh <-chan gd.Ledger,
+	Order_toMasterCh chan<- gd.Order,
+	Orders_toElevatorCtrlCh chan<- gd.Orders2D,
+	LightCh chan gd.Orders2D,
 ) {
 
 	for {
@@ -41,8 +40,6 @@ func orderHandlerModule(
 				}
 			}
 			LightCh <- lightMatrix
-			
-
 
 		case completedOrder := <-CompletedOrderCh: //(ButtonEvent struct) from elevatorcontroller?
 			newCompletedOrder := gd.Order{

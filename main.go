@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 
+	"github.com/adrianiaz/TTK4145-project/elevio"
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 	"github.com/adrianiaz/TTK4145-project/master"
 	"github.com/adrianiaz/TTK4145-project/network/bcast"
 	"github.com/adrianiaz/TTK4145-project/network/network"
 	"github.com/adrianiaz/TTK4145-project/network/peers"
+	"github.com/adrianiaz/TTK4145-project/orderHandler"
 )
 
 func main() {
@@ -50,6 +52,30 @@ func main() {
 	order_fromOrderHandler := make(chan gd.Order)
 	elevatorState_fromElevatorController := make(chan gd.ElevatorState)
 
+	//channels for orderHandler
+	completedOrder_toOrderHandler := make(chan gd.ButtonEvent)
+	orders_toElevatorCtrl := make(chan gd.Orders2D)
+	lights_toElevatorCtrl := make(chan gd.Orders2D)
+
+	// type ElevatorChannels struct {
+	// 	OrderCh          chan bool //add arrows to indicate direction
+	// 	CurrentFloorCh   chan int
+	// 	ObstructionEvent chan bool
+	// 	StopCh           chan bool
+	// 	LocalLights2D    chan gd.Orders2D
+	// 	LocalOrder2D     <-chan gd.Orders2D
+	// 	ToMaster         chan<- gd.ElevatorState
+	// 	}
+	// 	//elevator channels
+
+	//hardware channels
+	hw_button := make(chan gd.ButtonEvent)
+	hw_floor := make(chan int)
+	hw_obstr := make(chan bool)
+	hw_stop := make(chan bool)
+
+	elevio.HardwareInitilizer(hw_floor, hw_obstr, hw_stop, hw_button, gd.N_FLOORS)
+
 	go master.Master(
 		order_toMaster,
 		isMaster,
@@ -80,7 +106,17 @@ func main() {
 		isMaster,
 		alive_fromWatchDog,
 		ledger_toWatchDog,
-		id)
+		id,
+	)
 
+	go orderHandler.OrderHandler(
+		id,
+		hw_button,
+		completedOrder_toOrderHandler,
+		ledger_toOrderHandler,
+		order_fromOrderHandler,
+		orders_toElevatorCtrl,
+		lights_toElevatorCtrl,
+	)
 	select {}
 }
