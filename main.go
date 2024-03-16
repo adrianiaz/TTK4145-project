@@ -57,16 +57,16 @@ func main() {
 	orders_toElevatorCtrl := make(chan gd.Orders2D)
 	lights_toElevatorCtrl := make(chan gd.Orders2D)
 
-	// type ElevatorChannels struct {
-	// 	OrderCh          chan bool //add arrows to indicate direction
-	// 	CurrentFloorCh   chan int
-	// 	ObstructionEvent chan bool
-	// 	StopCh           chan bool
-	// 	LocalLights2D    chan gd.Orders2D
-	// 	LocalOrder2D     <-chan gd.Orders2D
-	// 	ToMaster         chan<- gd.ElevatorState
-	// 	}
-	// 	//elevator channels
+	// Type ElevatorChannels struct {
+
+	// 	completedOrder_toOrderHandler chan gd.ButtonEvent //add arrows to indicate direction
+	// 	CurrentFloorCh                chan int
+	// 	ObstructionEvent              chan bool
+	// 	StopCh                        chan bool
+	// 	LocalLights2D                 chan gd.Orders2D
+	// 	LocalOrder2D                  <-chan gd.Orders2D
+	// 	ToMaster                      chan<- gd.ElevatorState
+	// }
 
 	//hardware channels
 	hw_button := make(chan gd.ButtonEvent)
