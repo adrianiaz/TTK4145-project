@@ -32,7 +32,6 @@ func Master(
 		ActiveOrders:   make(gd.AllOrders),
 		ElevatorStates: make(gd.AllElevatorStates),
 		NodeHierarchy:  make([]string, 0),
-		Alive:          make([]bool, 0),
 	}
 
 slaveLoop:

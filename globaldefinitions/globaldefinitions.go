@@ -77,7 +77,6 @@ type Ledger struct {
 	ActiveOrders   AllOrders         `json:"activeOrders"`
 	ElevatorStates AllElevatorStates `json:"elevatorStates"`
 	NodeHierarchy  []string          `json:"backupMaster"` //first element is master, second is backupMaster, rest are slaves
-	Alive          []bool            `json:"alive"`
 }
 
 func Serialize(ledger Ledger) (string, error) {
