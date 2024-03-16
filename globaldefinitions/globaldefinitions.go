@@ -63,7 +63,7 @@ type ButtonEvent struct {
 //order structs and Ledger struct and member functions
 
 type Order struct {
-	NewOrder   bool       `json:"newOrder"` 		//true if newOrder false if completed
+	NewOrder   bool       `json:"newOrder"` //true if newOrder false if completed
 	ElevatorID string     `json:"elevatorID"`
 	Floor      int        `json:"floor"`
 	BtnType    ButtonType `json:"btnType"`

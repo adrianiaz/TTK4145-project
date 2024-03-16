@@ -8,6 +8,7 @@ import (
 	"github.com/adrianiaz/TTK4145-project/network/bcast"
 	"github.com/adrianiaz/TTK4145-project/network/network"
 	"github.com/adrianiaz/TTK4145-project/network/peers"
+	"github.com/adrianiaz/TTK4145-project/orderHandler"
 )
 
 func main() {
@@ -76,11 +77,22 @@ func main() {
 		id,
 	)
 
+	hw_button := make(chan gd.ButtonEvent)
+	hw_floor := make(chan int)
+	hw_obstr := make(chan bool)
+	hw_stop := make(chan bool)
+
 	go network.WatchDog(peerUpdateCh,
 		isMaster,
 		alive_fromWatchDog,
 		ledger_toWatchDog,
-		id)
+		id,
+	)
+
+	go orderHandler.OrderHandler(
+		id,
+		hw_button,
+	)
 
 	select {}
 }
