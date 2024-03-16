@@ -8,12 +8,12 @@ import (
 func WatchDog(
 	peerUpdateCh chan peers.PeerUpdate,
 	peerTxEnable chan bool,
-	isMaster chan<- bool,
+	isMaster chan<- gd.Ledger,
 	alive_toMaster chan<- []string,
 
-	ledger_toWatchdog <-chan gd.Ledger,
+	ledger_fromNetwork <-chan gd.Ledger,
+	id string,
 ) {
-	id := "placeholderID"
 
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
@@ -23,15 +23,15 @@ func WatchDog(
 	for {
 		select {
 		case p := <-peerUpdateCh:
-			if localLedger.BackupMasterlst[0] == id {
+			if localLedger.NodeHierarchy[1] == id { //if this node is backupMaster
 				for _, peer := range p.Lost {
-					if peer == "master" {
-						isMaster <- true
+					if peer == localLedger.NodeHierarchy[0] {
+						isMaster <- localLedger
 					}
 				}
 			}
 			alive_toMaster <- p.Peers
-		case ledger := <-ledger_toWatchdog:
+		case ledger := <-ledger_fromNetwork:
 			localLedger = ledger
 		}
 	}

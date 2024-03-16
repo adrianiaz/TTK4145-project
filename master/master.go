@@ -20,22 +20,26 @@ import (
 
 func Master(
 	ordersToMasterCh <-chan gd.Order,
-	isMaster <-chan bool,
+	isMaster <-chan gd.Ledger,
 	alive_fromWatchDog <-chan []string,
+
+	ledger_toOrderHandler chan<- gd.Ledger,
+
+	id string,
 ) {
 	//initialize a ledger with default values
 	ledger := gd.Ledger{
-		ActiveOrders:    make(gd.AllOrders),
-		ElevatorStates:  make(gd.AllElevatorStates),
-		BackupMasterlst: make([]string, 0),
-		Alive:           make([]bool, 0),
+		ActiveOrders:   make(gd.AllOrders),
+		ElevatorStates: make(gd.AllElevatorStates),
+		NodeHierarchy:  make([]string, 0),
+		Alive:          make([]bool, 0),
 	}
 
 slaveLoop:
 	for {
 		select {
-		case <-isMaster:
-			//break out of for-loop and start mastermode
+		case lastObservedLedger := <-isMaster:
+			ledger = lastObservedLedger
 			break slaveLoop
 		}
 	}
@@ -48,6 +52,7 @@ slaveLoop:
 			case true:
 				if order.BtnType == gd.BT_Cab {
 					ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, true)
+					ledger_toOrderHandler <- ledger
 				} else { //hall request
 
 					OptimalHallReqAssignment := extractOptimalHallRequests(ledger, order)
@@ -59,13 +64,14 @@ slaveLoop:
 							}
 						}
 					}
+					ledger_toOrderHandler <- ledger
 				}
 			case false:
 				ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, false)
-
+				ledger_toOrderHandler <- ledger
 			}
 		case alivePeers := <-alive_fromWatchDog:
-			ledger.BackupMasterlst = sortAndRemoveOwnID(alivePeers, "master")
+			ledger.NodeHierarchy = sortHierarchy(alivePeers, id)
 		}
 	}
 }
@@ -76,7 +82,7 @@ func updateSingleOrder(ledger gd.Ledger, order gd.Order, orderChange bool) gd.Or
 	return orderToChange
 }
 
-func sortAndRemoveOwnID(alivePeers []string, ownId string) []string {
+func sortHierarchy(alivePeers []string, ownId string) []string {
 	var intPeers []int
 	for _, peer := range alivePeers {
 		if peer != ownId {
@@ -91,6 +97,7 @@ func sortAndRemoveOwnID(alivePeers []string, ownId string) []string {
 	sort.Ints(intPeers)
 	//convert back to string in same order as before
 	var sortedPeers []string
+	sortedPeers = append(sortedPeers, ownId)
 	for _, peer := range intPeers {
 		sortedPeers = append(sortedPeers, strconv.Itoa(peer))
 	}

@@ -74,10 +74,10 @@ type AllElevatorStates map[string]ElevatorState
 
 type Ledger struct {
 	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
-	ActiveOrders    AllOrders         `json:"activeOrders"`
-	ElevatorStates  AllElevatorStates `json:"elevatorStates"`
-	BackupMasterlst []string          `json:"backupMaster"`
-	Alive           []bool            `json:"alive"`
+	ActiveOrders   AllOrders         `json:"activeOrders"`
+	ElevatorStates AllElevatorStates `json:"elevatorStates"`
+	NodeHierarchy  []string          `json:"backupMaster"` //first element is master, second is backupMaster, rest are slaves
+	Alive          []bool            `json:"alive"`
 }
 
 func Serialize(ledger Ledger) (string, error) {
