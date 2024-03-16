@@ -7,17 +7,12 @@ import (
 
 func WatchDog(
 	peerUpdateCh chan peers.PeerUpdate,
-	peerTxEnable chan bool,
 	isMaster chan<- gd.Ledger,
 	alive_toMaster chan<- []string,
 
 	ledger_fromNetwork <-chan gd.Ledger,
 	id string,
 ) {
-
-	go peers.Transmitter(15647, id, peerTxEnable)
-	go peers.Receiver(15647, peerUpdateCh)
-
 	var localLedger gd.Ledger
 
 	for {
