@@ -43,6 +43,8 @@ slaveLoop:
 		}
 	}
 
+	fmt.Printf("New master with id: %v\n", id)
+
 	//masterLoop
 	for {
 		select {
