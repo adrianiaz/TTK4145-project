@@ -22,7 +22,7 @@ type ElevatorChannels struct {
 	LocalLights2D    chan gd.Orders2D
 	LocalOrder2D     <-chan gd.Orders2D
 	ToMaster         chan<- gd.ElevatorState
-}
+	}
 
 const (
 	timeUntilTimeout    time.Duration = 10 * time.Second
@@ -47,19 +47,27 @@ func InitiateElevator(ElevatorID string, addr string, numFloors int) Elevator {
 	return elev
 }
 
-func StartElevatorController(ElevatorID string, addr string, numFloors int, ch ElevatorChannels) {
+func StartElevatorController(
+	ElevatorID string, 
+	addr string, 
+	numFloors int, 
+	ch ElevatorChannels,
+	) {
 
 	fmt.Println("ElevatorController started")
+	
 	elev := InitiateElevator(ElevatorID, addr, numFloors)
 
 	doorOpening := make(chan bool, 100)
-	doorOpenDuration := time.NewTimer(timeUntilDoorCloses)
+
+	doorOpenDuration  := time.NewTimer(timeUntilDoorCloses)
+	timeoutTimer      := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
+	sendElevatorState := time.NewTimer(1 * time.Second)
+	
 	doorOpenDuration.Stop()
-	timeoutTimer := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
 	elevio.SetDoorOpenLamp(false)
 	obstruction := false
 
-	sendElevatorState := time.NewTimer(1 * time.Second)
 
 	for {
 		select {
