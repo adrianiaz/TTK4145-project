@@ -4,36 +4,32 @@ import (
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
-type OrderHandlerChannels struct {
-	ButtonPressCh          <-chan gd.ButtonEvent // Receive button presses
-	NewOrderCh             chan<- gd.Order       // Send new orders
-	LedgerFromMasterCh     <-chan gd.Ledger      // Receive ledger from master
-	OrderToMasterCh        chan<- gd.Order       // Send orders to master
-	OrdersToElevatorCtrlCh chan<- gd.Orders2D    // Send orders to elevator controller
-	CompletedOrderCh       <-chan gd.ButtonEvent // Receive completed orders
-	LightCh                chan gd.Orders2D      // Bi-directional channel for updating elevator lights
-}
 
 func orderHandlerModule(
 	ID string,
-	CH OrderHandlerChannels,
+	ButtonPressCh          <-chan gd.ButtonEvent, 
+	CompletedOrderCh       <-chan gd.ButtonEvent, //buttonEvent? or order or matrix?
+	Ledger_fromMasterCh     <-chan gd.Ledger,      
+	Order_toMasterCh        chan<- gd.Order,       
+	Orders_toElevatorCtrlCh chan<- gd.Orders2D,    
+	LightCh                 chan   gd.Orders2D,      
 ) {
 
 	for {
 		select {
 
-		case button := <-CH.ButtonPressCh: //(ButtonEvent struct)
+		case button := <-ButtonPressCh:
 			newOrder := gd.Order{
 				NewOrder:   true,
 				Floor:      button.Floor,
 				BtnType:    button.Button,
-				ElevatorID: "0", //placeholder
+				ElevatorID: ID,
 			}
-			CH.OrderToMasterCh <- newOrder
+			Order_toMasterCh <- newOrder
 
-		case ledgerFromMaster := <-CH.LedgerFromMasterCh:
+		case ledgerFromMaster := <-Ledger_fromMasterCh:
 			newLocalOrder2D := ledgerFromMaster.ActiveOrders[ID]
-			CH.OrdersToElevatorCtrlCh <- newLocalOrder2D
+			Orders_toElevatorCtrlCh <- newLocalOrder2D
 
 			//set lights
 			lightMatrix := newLocalOrder2D
@@ -44,21 +40,18 @@ func orderHandlerModule(
 					}
 				}
 			}
-			CH.LightCh <- lightMatrix
+			LightCh <- lightMatrix
+			
 
-		case completedOrder := <-CH.CompletedOrderCh: //(ButtonEvent struct) from elevatorcontroller
+
+		case completedOrder := <-CompletedOrderCh: //(ButtonEvent struct) from elevatorcontroller?
 			newCompletedOrder := gd.Order{
 				NewOrder:   false,
 				ElevatorID: ID,
 				Floor:      completedOrder.Floor,
 				BtnType:    completedOrder.Button,
 			}
-			CH.OrderToMasterCh <- newCompletedOrder //to master
-
-			//update lights matrix
-			lightMatrixUpdate := <-CH.LightCh
-			lightMatrixUpdate[completedOrder.Floor][completedOrder.Button] = false
-			CH.LightCh <- lightMatrixUpdate
+			Order_toMasterCh <- newCompletedOrder
 		}
 	}
 }
