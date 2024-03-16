@@ -2,7 +2,6 @@ package network
 
 import (
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
-	"github.com/adrianiaz/TTK4145-project/network/peers"
 )
 
 func NetworkMessageForwarder(
@@ -12,10 +11,6 @@ func NetworkMessageForwarder(
 	singleOrderTx chan gd.Order,
 	elevatorStateRx chan gd.ElevatorState,
 	elevatorStateTx chan gd.ElevatorState,
-
-	peerUpdateCh chan peers.PeerUpdate,
-	peerTxEnable chan bool,
-
 	ledger_toWatchDog chan<- gd.Ledger,
 	ledger_toOrderHandler chan<- gd.Ledger,
 	ledger_fromMaster <-chan gd.Ledger,

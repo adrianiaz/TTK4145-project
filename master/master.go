@@ -19,11 +19,11 @@ import (
 // }
 
 func Master(
-	ordersToMasterCh <-chan gd.Order,
+	orders_toMaster <-chan gd.Order,
 	isMaster <-chan gd.Ledger,
 	alive_fromWatchDog <-chan []string,
-
-	ledger_toOrderHandler chan<- gd.Ledger,
+	elevatorStates_fromNetwork <-chan gd.ElevatorState,
+	ledger_toNetwork chan<- gd.Ledger,
 
 	id string,
 ) {
@@ -45,15 +45,14 @@ slaveLoop:
 
 	fmt.Printf("New master with id: %v\n", id)
 
-	//masterLoop
 	for {
 		select {
-		case order := <-ordersToMasterCh:
+		case order := <-orders_toMaster:
 			switch order.NewOrder {
 			case true:
 				if order.BtnType == gd.BT_Cab {
 					ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, true)
-					ledger_toOrderHandler <- ledger
+					ledger_toNetwork <- ledger
 				} else { //hall request
 
 					OptimalHallReqAssignment := extractOptimalHallRequests(ledger, order)
@@ -65,14 +64,17 @@ slaveLoop:
 							}
 						}
 					}
-					ledger_toOrderHandler <- ledger
+					ledger_toNetwork <- ledger
 				}
 			case false:
 				ledger.ActiveOrders[order.ElevatorID] = updateSingleOrder(ledger, order, false)
-				ledger_toOrderHandler <- ledger
+				ledger_toNetwork <- ledger
 			}
 		case alivePeers := <-alive_fromWatchDog:
 			ledger.NodeHierarchy = sortHierarchy(alivePeers, id)
+
+		case elevatorState := <-elevatorStates_fromNetwork:
+			ledger.ElevatorStates[elevatorState.ElevatorID] = elevatorState
 		}
 	}
 }
