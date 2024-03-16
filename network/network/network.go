@@ -5,7 +5,7 @@ import (
 	"github.com/adrianiaz/TTK4145-project/network/peers"
 )
 
-func StartNetworkModule(
+func NetworkMessageForwarder(
 	ledgerRx chan gd.Ledger,
 	ledgerTx chan gd.Ledger,
 	singleOrderRx chan gd.Order,
@@ -16,47 +16,53 @@ func StartNetworkModule(
 	peerUpdateCh chan peers.PeerUpdate,
 	peerTxEnable chan bool,
 
+	ledger_toWatchDog chan<- gd.Ledger,
 	ledger_toOrderHandler chan<- gd.Ledger,
 	ledger_fromMaster <-chan gd.Ledger,
 	order_fromOrderHandler <-chan gd.Order,
 	order_toMaster chan<- gd.Order,
 	elevatorState_toMaster chan<- gd.ElevatorState,
 	elevatorState_fromElevatorController <-chan gd.ElevatorState,
-) {
 
-	id := "placeholderID"
+	id string,
+) {
+	var localLedger gd.Ledger
 
 	for {
 		select {
 		case ledger := <-ledgerRx:
-			if id == "master" {
+			if id == localLedger.NodeHierarchy[0] {
 				break
 			}
 			ledger_toOrderHandler <- ledger
+			ledger_toWatchDog <- ledger
+			localLedger = ledger
 
 		case ledger := <-ledger_fromMaster: //only happens if current node is master
 			ledgerTx <- ledger
-			ledger_toOrderHandler <- ledger //send to order module
+			ledger_toOrderHandler <- ledger
+			ledger_toWatchDog <- ledger
+			localLedger = ledger
 
 		case order := <-order_fromOrderHandler:
-			if id == "master" {
+			if id == localLedger.NodeHierarchy[0] {
 				order_toMaster <- order
 			} else {
 				singleOrderTx <- order
 			}
 
 		case order := <-singleOrderRx:
-			if id == "master" {
+			if id == localLedger.NodeHierarchy[0] {
 				order_toMaster <- order
 			}
 
 		case state := <-elevatorStateRx:
-			if id == "master" {
+			if id == localLedger.NodeHierarchy[0] {
 				elevatorState_toMaster <- state
 			}
 
 		case state := <-elevatorState_fromElevatorController:
-			if id == "master" {
+			if id == localLedger.NodeHierarchy[0] {
 				elevatorState_toMaster <- state
 			} else {
 				elevatorStateTx <- state
