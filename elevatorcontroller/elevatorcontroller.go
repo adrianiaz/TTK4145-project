@@ -19,11 +19,15 @@ type ElevatorChannels struct {
 	CurrentFloorCh   chan int
 	ObstructionEvent chan bool
 	StopCh           chan bool
+	LocalLights2D    chan gd.Orders2D
 	LocalOrder2D  <-chan gd.Orders2D
 	ToMaster         chan<- gd.ElevatorState
 }
 
-const timeUntilTimeout time.Duration = 5 * time.Second
+const (
+	timeUntilTimeout    time.Duration = 10 * time.Second
+	timeUntilDoorCloses time.Duration = 3 * time.Second
+)
 
 func InitiateElevator(ElevatorID string, addr string, numFloors int) Elevator {
 	elevio.Init(addr, numFloors)
@@ -48,11 +52,12 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 	fmt.Println("ElevatorController started")
 	elev := InitiateElevator(ElevatorID, addr, numFloors)
 
-	doorOpened := make(chan bool, 100)
-	doorOpenDuration := time.NewTimer(3 * time.Second)
+	doorOpening := make(chan bool, 100)
+	doorOpenDuration := time.NewTimer(timeUntilDoorCloses)
 	doorOpenDuration.Stop()
 	timeoutTimer := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
 	elevio.SetDoorOpenLamp(false)
+	obstruction := false
 
 	sendElevatorState := time.NewTimer(1 * time.Second)
 
@@ -68,9 +73,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				if elev.shouldStop() {
 					elevio.SetMotorDirection(elevio.MD_Stop)
 					elev.clearOrdersAtCurrentFloor()
-					doorOpened <- true
+					doorOpening <- true
 					elev.setButtonLights() //with channel?, doublecheck if this is correct, in the line above the setDoorOpenLamp func is used
-					elev.State.Behaviour = gd.EB_Idle
+					elev.State.Behaviour = gd.EB_DoorOpen
 				}
 				if (elev.orders == gd.Orders2D{}) {
 					elevio.SetMotorDirection(elevio.MD_Stop)
@@ -85,19 +90,27 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 			}
 		ch.ToMaster <- elev.State
 
-		case <-doorOpened:
+		case <-doorOpening:
 			fmt.Println("The door is open")
 			elevio.SetDoorOpenLamp(true)
-			doorOpenDuration.Reset(3 * time.Second)
+			doorOpenDuration.Reset(timeUntilDoorCloses)
 			elevio.SetDoorOpenLamp(false)
 			timeoutTimer.Stop()
 
-		case <-doorOpenDuration.C: //rename?
-			obstruction := <-ch.ObstructionEvent //consider making this a case
+		case doorObstructed := <-ch.ObstructionEvent:
+			obstruction = doorObstructed
 			if obstruction {
 				fmt.Println("Obstruction detected")
-				doorOpenDuration.Reset(3 * time.Second)
+				elevio.SetDoorOpenLamp(true)
+				elev.State.Behaviour = gd.EB_DoorOpen
+			} else {
+				doorOpenDuration.Reset(timeUntilDoorCloses)
 				elevio.SetDoorOpenLamp(false)
+			}
+
+		case <-doorOpenDuration.C: //rename?
+			if obstruction {
+				break
 			}
 
 			fmt.Println("The door is closed")
@@ -111,9 +124,9 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 
 				switch elev.State.Behaviour {
 				case gd.EB_DoorOpen:
-					doorOpened <- true
-					elev.clearOrdersAtCurrentFloor()
-					elev.setButtonLights() //Doublecheck if this is correct
+					doorOpening <- true
+					elev.clearOrdersAtCurrentFloor() //update this function to turn off the lights as well
+					elev.setButtonLights()           //Doublecheck if this is correct
 				case gd.EB_Moving:
 					timeoutTimer.Reset(timeUntilTimeout)
 				case gd.EB_Idle:
@@ -123,6 +136,11 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				}
 				//timeoutTimer.Reset(5 * time.Second)
 			}
+
+		case lightMatrix := <-ch.LocalLights2D:
+			elev.lights = lightMatrix
+			elev.setButtonLights()
+
 
 		case orderMatrix := <-ch.LocalOrder2D: //navn endres
 			//fmt.Println("Button pressed at floor: ", btn.Floor, " Button type: ", btn.Button)
@@ -153,6 +171,7 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 					case gd.EB_DoorOpen:
 						doorOpened <- true
 						elev.clearOrdersAtCurrentFloor()
+            elev.setButtonLights()
 					case gd.EB_Moving:
 						elevio.SetMotorDirection(motorDir)
 						timeoutTimer.Reset(timeUntilTimeout)
@@ -165,9 +184,6 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 				elev.State.TravelDirection = DirBehaviourPair.Dir
 				
 			case gd.EB_Moving:
-
-
-
 
 			// switch elev.State.Behaviour {
 			// case gd.EB_DoorOpen:
@@ -203,15 +219,16 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 			// 		timeoutTimer.Stop()
 			// 	}
 			}
+      
 		case <-sendElevatorState.C:
 			ch.ToMaster <- elev.State
 			sendElevatorState.Reset(1 * time.Second)
 
 		case <-timeoutTimer.C:
 			fmt.Println("Elevator has timed out")
+			elev.State.Behaviour = gd.EB_Moving
 			elevio.SetMotorDirection(elevio.MD_Down)
 			elev.State.TravelDirection = gd.TravelDown
-			elev.State.Behaviour = gd.EB_Moving
 			//timeoutTimer.Reset(timeUntilTimeout)
 
 			/* default:
@@ -224,32 +241,10 @@ func StartElevatorController(ElevatorID string, addr string, numFloors int, ch E
 	}
 }
 
-/* func (elev Elevator) UpdateState(floor int, behaviour ElevatorBehaviour, travelDir TravelDir) {
-	elev.State.Floor = floor
-	elev.State.Behaviour = behaviour
-	elev.State.TravelDirection = travelDir
-} */
-
-func (elev Elevator) fsm_onInitBetweenFloors() { //default case within startElevatorController
+/* func (elev Elevator) fsm_onInitBetweenFloors() { //default case within startElevatorController
 	elevio.SetMotorDirection(elevio.MD_Down)
 	elev.State.TravelDirection = gd.TravelDown
 	elev.State.Behaviour = gd.EB_Moving
-}
-
-/* func (elev Elevator) fsm_onFloorArrival() {
-	fmt.Println("Arriving at floor: ", elev.State.Floor)
-	elevio.SetFloorIndicator(elev.State.Floor)
-
-	switch elev.State.Behaviour {
-	case gd.EB_Moving:
-		if elev.shouldStop() {
-			elevio.SetMotorDirection(elevio.MD_Stop)
-			elevio.SetDoorOpenLamp(true)
-			elev.ClearOrdersAtCurrentFloor()
-			doorOpenTimer.Reset(3 * time.Second)
-
-		}
-	}
 } */
 
 func (elev Elevator) orderAbove() bool {
@@ -357,8 +352,6 @@ func (elev Elevator) chooseDirection() DirBehaviourPair {
 }
 
 func (elev Elevator) shouldStop() bool {
-	//orderAbove := elev.orderAbove()
-	//orderBelow := elev.orderBelow()
 	currentFloor := elev.State.Floor
 
 	switch elev.State.TravelDirection {
@@ -380,26 +373,34 @@ func (elev Elevator) clearOrdersAtCurrentFloor() {
 	case gd.ClearRequests_All:
 		for btn := 0; btn < gd.N_BUTTONS; btn++ {
 			elev.orders[elev.State.Floor][btn] = false
+			elev.lights[elev.State.Floor][btn] = false
 		}
 
 	case gd.ClearRequests_InMotorDir:
 		elev.orders[elev.State.Floor][gd.BT_Cab] = false
+		elev.lights[elev.State.Floor][gd.BT_Cab] = false
 
 		switch elev.State.TravelDirection {
 		case gd.TravelUp:
 			if !elev.orderAbove() && !elev.orders[elev.State.Floor][gd.BT_HallUp] {
 				elev.orders[elev.State.Floor][gd.BT_HallDown] = false
+				elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 			}
 			elev.orders[elev.State.Floor][gd.BT_HallUp] = false
+			elev.lights[elev.State.Floor][gd.BT_HallUp] = false
 		case gd.TravelDown:
 			if !elev.orderBelow() && !elev.orders[elev.State.Floor][gd.BT_HallDown] {
 				elev.orders[elev.State.Floor][gd.BT_HallUp] = false
+				elev.lights[elev.State.Floor][gd.BT_HallUp] = false
 			}
 			elev.orders[elev.State.Floor][gd.BT_HallDown] = false
+			elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 		case gd.TravelStop:
 		default:
 			elev.orders[elev.State.Floor][gd.BT_HallUp] = false
 			elev.orders[elev.State.Floor][gd.BT_HallDown] = false
+			elev.lights[elev.State.Floor][gd.BT_HallUp] = false
+			elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 		}
 	}
 }
@@ -417,27 +418,11 @@ func clearOrdersImmediately(elev Elevator, btn_floor int, btn_type gd.ButtonType
 	}
 }
 
-// have to see if this will be necessary here
-func (elev Elevator) clearLightsAtCurrentFloor() {
-	for btn := 0; btn < gd.N_BUTTONS; btn++ {
-		elev.lights[elev.State.Floor][btn] = false
-	}
-}
-
 // setButtonLamp sets the light of the button at the given floor to the given value, might have to make some adjustments to this function
 func (elev Elevator) setButtonLights() {
-	//elevio.SetFloorIndicator(elev.State.Floor)
 	for floor := 0; floor < gd.N_FLOORS; floor++ {
 		for btn := 0; btn < gd.N_BUTTONS; btn++ {
 			elevio.SetButtonLamp(gd.ButtonType(btn), floor, elev.lights[floor][btn])
 		}
-	}
-}
-
-// sets the floor indicator and the cab lights
-func (elev Elevator) setCabLights() {
-	elevio.SetFloorIndicator(elev.State.Floor)
-	for floor := 0; floor < gd.N_FLOORS; floor++ {
-		elevio.SetButtonLamp(gd.BT_Cab, floor, elev.lights[floor][gd.BT_Cab])
 	}
 }
