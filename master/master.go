@@ -8,16 +8,6 @@ import (
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
-//uses ordersToMasterch for both newOrders and completedOrders
-
-// type Ledger struct {
-// 	//create a map where elevatorID is the key and the value is a slice of ActiveOrders
-// 	ActiveOrders    AllOrders         `json:"activeOrders"`
-// 	ElevatorStates  AllElevatorStates `json:"elevatorStates"`
-// 	BackupMasterlst []string          `json:"backupMaster"`
-// 	Alive           []bool            `json:"alive"`
-// }
-
 func Master(
 	orders_toMaster <-chan gd.Order,
 	isMaster <-chan gd.Ledger,
@@ -31,7 +21,7 @@ func Master(
 	ledger := gd.Ledger{
 		ActiveOrders:   make(gd.AllOrders),
 		ElevatorStates: make(gd.AllElevatorStates),
-		NodeHierarchy:  make([]string, 0),
+		NodeHierarchy:  make([]string, 4),
 	}
 
 slaveLoop:
