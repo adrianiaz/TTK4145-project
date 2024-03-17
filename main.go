@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/adrianiaz/TTK4145-project/elevio"
+	"github.com/adrianiaz/TTK4145-project/elevatorcontroller"
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 	"github.com/adrianiaz/TTK4145-project/master"
 	"github.com/adrianiaz/TTK4145-project/network/bcast"
@@ -57,32 +57,32 @@ func main() {
 	orders_toElevatorCtrl := make(chan gd.Orders2D)
 	lights_toElevatorCtrl := make(chan gd.Orders2D)
 
-	// Type ElevatorChannels struct {
-
-	// 	completedOrder_toOrderHandler chan gd.ButtonEvent //add arrows to indicate direction
-	// 	CurrentFloorCh                chan int
-	// 	ObstructionEvent              chan bool
-	// 	StopCh                        chan bool
-	// 	LocalLights2D                 chan gd.Orders2D
-	// 	LocalOrder2D                  <-chan gd.Orders2D
-	// 	ToMaster                      chan<- gd.ElevatorState
-	// }
-
 	//hardware channels
 	hw_button := make(chan gd.ButtonEvent)
 	hw_floor := make(chan int)
 	hw_obstr := make(chan bool)
 	hw_stop := make(chan bool)
 
-	elevio.HardwareInitilizer(hw_floor, hw_obstr, hw_stop, hw_button, gd.N_FLOORS)
-
-	go master.Master(
-		order_toMaster,
-		isMaster,
-		alive_fromWatchDog,
-		elevatorState_toMaster,
-		ledger_toNetwork,
+	go orderHandler.OrderHandler(
 		id,
+		hw_button,
+		completedOrder_toOrderHandler,
+		ledger_toOrderHandler,
+		order_fromOrderHandler,
+		orders_toElevatorCtrl,
+		lights_toElevatorCtrl,
+	)
+
+	go elevatorcontroller.StartElevatorController(
+		id,
+		gd.N_FLOORS,
+		hw_floor,
+		hw_obstr,
+		hw_stop,
+		completedOrder_toOrderHandler,
+		lights_toElevatorCtrl,
+		orders_toElevatorCtrl,
+		elevatorState_fromElevatorController,
 	)
 
 	go network.NetworkMessageForwarder(
@@ -109,14 +109,14 @@ func main() {
 		id,
 	)
 
-	go orderHandler.OrderHandler(
+	go master.Master(
+		order_toMaster,
+		isMaster,
+		alive_fromWatchDog,
+		elevatorState_toMaster,
+		ledger_toNetwork,
 		id,
-		hw_button,
-		completedOrder_toOrderHandler,
-		ledger_toOrderHandler,
-		order_fromOrderHandler,
-		orders_toElevatorCtrl,
-		lights_toElevatorCtrl,
 	)
+
 	select {}
 }

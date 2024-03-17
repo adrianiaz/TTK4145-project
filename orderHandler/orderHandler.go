@@ -1,18 +1,21 @@
 package orderHandler
 
 import (
+	"github.com/adrianiaz/TTK4145-project/elevio"
 	gd "github.com/adrianiaz/TTK4145-project/globaldefinitions"
 )
 
 func OrderHandler(
 	ID string,
-	ButtonPressCh <-chan gd.ButtonEvent,
-	CompletedOrderCh <-chan gd.ButtonEvent, //buttonEvent? or order or matrix?
+	ButtonPressCh chan gd.ButtonEvent,
+	CompletedOrderCh <-chan gd.ButtonEvent,
 	Ledger_fromMasterCh <-chan gd.Ledger,
 	Order_toMasterCh chan<- gd.Order,
 	Orders_toElevatorCtrlCh chan<- gd.Orders2D,
 	LightCh chan gd.Orders2D,
 ) {
+
+	go elevio.PollButtons(ButtonPressCh)
 
 	for {
 		select {
@@ -41,7 +44,7 @@ func OrderHandler(
 			}
 			LightCh <- lightMatrix
 
-		case completedOrder := <-CompletedOrderCh: //(ButtonEvent struct) from elevatorcontroller?
+		case completedOrder := <-CompletedOrderCh:
 			newCompletedOrder := gd.Order{
 				NewOrder:   false,
 				ElevatorID: ID,
