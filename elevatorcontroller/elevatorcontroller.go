@@ -14,18 +14,6 @@ type Elevator struct {
 	orders gd.Orders2D
 }
 
-type ElevatorChannels struct {
-
-	completedOrder_toOrderHandler chan gd.ButtonEvent //add arrows to indicate direction
-	CurrentFloorCh                chan int
-	ObstructionEvent              chan bool
-	StopCh                        chan bool
-	LocalLights2D                 chan gd.Orders2D
-	LocalOrder2D                  <-chan gd.Orders2D
-	ToMaster                      chan<- gd.ElevatorState
-}
-
-
 const (
 	timeUntilTimeout    time.Duration = 10 * time.Second
 	timeUntilDoorCloses time.Duration = 3 * time.Second
@@ -50,30 +38,37 @@ func InitiateElevator(ElevatorID string, addr string, numFloors int) Elevator {
 }
 
 func StartElevatorController(
-	ElevatorID string, 
-	addr string, 
-	numFloors int, 
-	ch ElevatorChannels,
-	) {
+	ElevatorID string,
+	addr string,
+	numFloors int,
+
+	completedOrder_toOrderHandler chan gd.ButtonEvent, //add arrows to indicate direction
+	currentFloorCh chan int,
+	obstructionEvent chan bool,
+	stopCh chan bool,
+	localLights2D chan gd.Orders2D,
+	localOrder2D <-chan gd.Orders2D,
+	toMaster chan<- gd.ElevatorState,
+
+) {
 
 	fmt.Println("ElevatorController started")
-	
+
 	elev := InitiateElevator(ElevatorID, addr, numFloors)
 
 	doorOpening := make(chan bool, 100)
 
-	doorOpenDuration  := time.NewTimer(timeUntilDoorCloses)
-	timeoutTimer      := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
+	doorOpenDuration := time.NewTimer(timeUntilDoorCloses)
+	timeoutTimer := time.NewTimer(timeUntilTimeout) //increase this a bit in case of for example several obstruction events in a row
 	sendElevatorState := time.NewTimer(1 * time.Second)
-	
+
 	doorOpenDuration.Stop()
 	elevio.SetDoorOpenLamp(false)
 	obstruction := false
 
-
 	for {
 		select {
-		case ArrivingAtFloor := <-ch.CurrentFloorCh:
+		case ArrivingAtFloor := <-currentFloorCh:
 			elev.State.Floor = ArrivingAtFloor
 			fmt.Println("Arriving at floor: ", elev.State.Floor)
 			elevio.SetFloorIndicator(elev.State.Floor)
@@ -85,7 +80,7 @@ func StartElevatorController(
 					ordersCleared := elev.clearOrdersAtCurrentFloor()
 					elev.setButtonLights()
 					for _, order := range ordersCleared {
-						ch.completedOrder_toOrderHandler <- order
+						completedOrder_toOrderHandler <- order
 					}
 					doorOpening <- true
 					elev.State.Behaviour = gd.EB_DoorOpen
@@ -101,7 +96,7 @@ func StartElevatorController(
 				elevio.SetMotorDirection(elevio.MD_Stop)
 				timeoutTimer.Stop()
 			}
-			ch.ToMaster <- elev.State
+			toMaster <- elev.State
 
 		case <-doorOpening:
 			fmt.Println("The door is open")
@@ -110,7 +105,7 @@ func StartElevatorController(
 			elevio.SetDoorOpenLamp(false)
 			timeoutTimer.Stop()
 
-		case doorObstructed := <-ch.ObstructionEvent:
+		case doorObstructed := <-obstructionEvent:
 			obstruction = doorObstructed
 			if obstruction {
 				fmt.Println("Obstruction detected")
@@ -121,7 +116,7 @@ func StartElevatorController(
 				elevio.SetDoorOpenLamp(false)
 			}
 
-		case <-doorOpenDuration.C: //rename?
+		case <-doorOpenDuration.C:
 			if obstruction {
 				break
 			}
@@ -138,42 +133,37 @@ func StartElevatorController(
 				switch elev.State.Behaviour {
 				case gd.EB_DoorOpen:
 					doorOpening <- true
-					ordersCleared := elev.clearOrdersAtCurrentFloor() //update this function to turn off the lights as well
+					ordersCleared := elev.clearOrdersAtCurrentFloor()
 					elev.setButtonLights()
 					for _, order := range ordersCleared {
-						ch.completedOrder_toOrderHandler <- order
+						completedOrder_toOrderHandler <- order
 					} //Doublecheck if this is correct
 				case gd.EB_Moving:
 					timeoutTimer.Reset(timeUntilTimeout)
 				case gd.EB_Idle:
 					elevio.SetDoorOpenLamp(false)
-					elevio.SetMotorDirection(motorDir) //differ from the handed out C code, different argument, here we know that motordir = MD_Stop (TravelStop) from looking at chooseDirection()
+					elevio.SetMotorDirection(motorDir)
 					timeoutTimer.Stop()
 				}
-				//timeoutTimer.Reset(5 * time.Second)
 			}
 
-		case lightMatrix := <-ch.LocalLights2D:
+		case lightMatrix := <-localLights2D:
 			elev.lights = lightMatrix
 			elev.setButtonLights()
 
-		case orderMatrix := <-ch.LocalOrder2D: //navn endres
-			//fmt.Println("Button pressed at floor: ", btn.Floor, " Button type: ", btn.Button)
+		case orderMatrix := <-localOrder2D:
 			elev.orders = orderMatrix
 			fmt.Println("Orders: ", elev.orders)
 
 			switch elev.State.Behaviour {
 			case gd.EB_DoorOpen:
-				if elev.orderAtCurrentFloor() {
-					ordersCleared := elev.clearOrdersAtCurrentFloor()
+				if elev.shouldClearOrderImmediately(elev.orders) {
+					ordersCleared := elev.returnClearedOrders(elev.orders)
 					elev.setButtonLights()
 					for _, order := range ordersCleared {
-						ch.completedOrder_toOrderHandler <- order
+						completedOrder_toOrderHandler <- order
 					}
 					doorOpening <- true
-					doorOpenDuration.Reset(timeUntilDoorCloses)
-				} else {
-					//elev.orders = orderMatrix
 				}
 
 			case gd.EB_Idle:
@@ -193,7 +183,7 @@ func StartElevatorController(
 						ordersCleared := elev.clearOrdersAtCurrentFloor()
 						elev.setButtonLights()
 						for _, order := range ordersCleared {
-							ch.completedOrder_toOrderHandler <- order
+							completedOrder_toOrderHandler <- order
 						}
 
 					case gd.EB_Moving:
@@ -208,44 +198,10 @@ func StartElevatorController(
 				elev.State.TravelDirection = DirBehaviourPair.Dir
 
 			case gd.EB_Moving:
-
-				// switch elev.State.Behaviour {
-				// case gd.EB_DoorOpen:
-				// 	if clearOrdersImmediately(elev, btn.Floor, btn.Button) {
-				// 		doorOpenDuration.Reset(3 * time.Second)
-				// 	} else {
-				// 		elev.orders[btn.Floor][btn.Button] = true
-				// 		elev.lights[btn.Floor][btn.Button] = true
-				// 		//elev.setButtonLights()
-				// 	}
-				// 	timeoutTimer.Stop()
-				// case gd.EB_Moving:
-				// 	elev.orders[btn.Floor][btn.Button] = true
-				// 	elev.lights[btn.Floor][btn.Button] = true
-
-				// case gd.EB_Idle:
-				// 	elev.orders[btn.Floor][btn.Button] = true
-				// 	elev.lights[btn.Floor][btn.Button] = true
-
-				// 	DirBehaviourPair := elev.chooseDirection()
-				// 	elev.State.Behaviour = DirBehaviourPair.Behaviour
-				// 	elev.State.TravelDirection = DirBehaviourPair.Dir
-				// 	motordir := elevio.MotorDirection(elev.State.TravelDirection)
-
-				// 	switch elev.State.Behaviour {
-				// 	case gd.EB_DoorOpen:
-				// 		doorOpened <- true
-				// 		elev.clearOrdersAtCurrentFloor()
-				// 	case gd.EB_Moving:
-				// 		elevio.SetMotorDirection(motordir)
-				// 		timeoutTimer.Reset(timeUntilTimeout)
-				// 	case gd.EB_Idle:
-				// 		timeoutTimer.Stop()
-				// 	}
 			}
 
 		case <-sendElevatorState.C:
-			ch.ToMaster <- elev.State
+			toMaster <- elev.State
 			sendElevatorState.Reset(1 * time.Second)
 
 		case <-timeoutTimer.C:
@@ -253,23 +209,10 @@ func StartElevatorController(
 			elev.State.Behaviour = gd.EB_Moving
 			elevio.SetMotorDirection(elevio.MD_Down)
 			elev.State.TravelDirection = gd.TravelDown
-			//timeoutTimer.Reset(timeUntilTimeout)
 
-			/* default:
-			elev.State.Floor = -1
-			elevio.SetMotorDirection(elevio.MD_Down)
-			elev.State.TravelDirection = gd.TravelDown
-			elev.State.Behaviour = gd.EB_Moving
-			timeoutTimer.Reset(timeUntilTimeout) */
 		}
 	}
 }
-
-/* func (elev Elevator) fsm_onInitBetweenFloors() { //default case within startElevatorController
-	elevio.SetMotorDirection(elevio.MD_Down)
-	elev.State.TravelDirection = gd.TravelDown
-	elev.State.Behaviour = gd.EB_Moving
-} */
 
 func (elev Elevator) orderAbove() bool {
 	for floorAbove := elev.State.Floor + 1; floorAbove < gd.N_FLOORS; floorAbove++ {
@@ -302,35 +245,6 @@ func (elev Elevator) orderAtCurrentFloor() bool {
 	return false
 }
 
-/* func (elev Elevator) chooseDirection2() gd.TravelDir {
-	orderAbove := elev.orderAbove()
-	orderBelow := elev.orderBelow()
-
-	switch elev.State.TravelDirection {
-	case gd.TravelUp:
-		if orderAbove {
-			return gd.TravelUp
-		} else if orderBelow {
-			return gd.TravelDown
-		} else {
-			return gd.TravelDown //implemented to prevent unexpected behaviour or getting stuck
-		}
-
-	case gd.TravelDown:
-		if orderBelow {
-			return gd.TravelDown
-		} else if orderAbove {
-			return gd.TravelUp
-		} else {
-			return gd.TravelUp //implemented to prevent unexpected behaviour or getting stuck
-		}
-
-	default:
-		return gd.TravelStop
-	}
-} */
-
-// Just used in the function requestsChooseDirection
 type DirBehaviourPair struct {
 	Dir       gd.TravelDir
 	Behaviour gd.ElevatorBehaviour
@@ -426,6 +340,8 @@ func (elev Elevator) clearOrdersAtCurrentFloor() []gd.ButtonEvent {
 			elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 			clearedOrders = append(clearedOrders, gd.ButtonEvent{Floor: elev.State.Floor, Button: gd.ButtonType(gd.BT_HallDown)})
 		case gd.TravelStop:
+			//if elev.State.Floor == elev.orders[] (elev.State.TravelDirection == gd.TravelUp && btn_type == gd.BT_HallUp)
+
 		default:
 			elev.orders[elev.State.Floor][gd.BT_HallUp] = false
 			elev.orders[elev.State.Floor][gd.BT_HallDown] = false
@@ -433,21 +349,54 @@ func (elev Elevator) clearOrdersAtCurrentFloor() []gd.ButtonEvent {
 			elev.lights[elev.State.Floor][gd.BT_HallDown] = false
 			clearedOrders = append(clearedOrders, gd.ButtonEvent{Floor: elev.State.Floor, Button: gd.ButtonType(gd.BT_HallUp)})
 		}
+
 	}
 	return clearedOrders
 }
 
-func clearOrdersImmediately(elev Elevator, btn_floor int, btn_type gd.ButtonType) bool {
-	switch elev.State.Config.ClearRequestVariant {
-	case gd.ClearRequests_All:
-		return elev.State.Floor == btn_floor
-	case gd.ClearRequests_InMotorDir:
-		return elev.State.Floor == btn_floor && ((elev.State.TravelDirection == gd.TravelUp && btn_type == gd.BT_HallUp) ||
-			(elev.State.TravelDirection == gd.TravelDown && btn_type == gd.BT_HallDown) ||
-			(elev.State.TravelDirection == gd.TravelStop) || (btn_type == gd.BT_Cab))
-	default:
-		return false
+func (elev Elevator) shouldClearOrderImmediately(Orders gd.Orders2D) bool {
+	buttonEvents := OrderMatrixToButtonEvent(Orders)
+	for _, event := range buttonEvents {
+		floor := event.Floor
+		btn_type := event.Button
+
+		if elev.State.Floor == floor {
+			switch elev.State.Config.ClearRequestVariant {
+			case gd.ClearRequests_All:
+				return true
+			case gd.ClearRequests_InMotorDir:
+				return (elev.State.TravelDirection == gd.TravelUp && btn_type == gd.BT_HallUp) ||
+					(elev.State.TravelDirection == gd.TravelDown && btn_type == gd.BT_HallDown) ||
+					(elev.State.TravelDirection == gd.TravelStop) || (btn_type == gd.BT_Cab)
+
+			}
+		}
 	}
+	return false
+}
+
+func (elev Elevator) returnClearedOrders(Orders gd.Orders2D) []gd.ButtonEvent {
+	buttonEvents := OrderMatrixToButtonEvent(Orders)
+	var clearedOrders []gd.ButtonEvent
+	for _, event := range buttonEvents {
+		floor := event.Floor
+		btn_type := event.Button
+
+		if elev.State.Floor == floor {
+			switch elev.State.Config.ClearRequestVariant {
+			case gd.ClearRequests_All:
+				clearedOrders = append(clearedOrders, gd.ButtonEvent{Floor: floor, Button: gd.ButtonType(btn_type)})
+			case gd.ClearRequests_InMotorDir:
+				if (elev.State.TravelDirection == gd.TravelUp && btn_type == gd.BT_HallUp) ||
+					(elev.State.TravelDirection == gd.TravelDown && btn_type == gd.BT_HallDown) ||
+					(elev.State.TravelDirection == gd.TravelStop) || (btn_type == gd.BT_Cab) {
+					clearedOrders = append(clearedOrders, gd.ButtonEvent{Floor: floor, Button: gd.ButtonType(btn_type)})
+				}
+			}
+
+		}
+	}
+	return clearedOrders
 }
 
 // setButtonLamp sets the light of the button at the given floor to the given value, might have to make some adjustments to this function
@@ -457,4 +406,18 @@ func (elev Elevator) setButtonLights() {
 			elevio.SetButtonLamp(gd.ButtonType(btn), floor, elev.lights[floor][btn])
 		}
 	}
+}
+
+func OrderMatrixToButtonEvent(Orders gd.Orders2D) []gd.ButtonEvent {
+	var NewButtonEvent []gd.ButtonEvent
+	for floor := 0; floor < len(Orders); floor++ {
+		for button := 0; button < len(Orders[0]); button++ {
+			if Orders[floor][button] {
+				buttonType := gd.ButtonType(button)
+				NewButtonEvent = append(NewButtonEvent, gd.ButtonEvent{Floor: floor, Button: buttonType})
+			}
+		}
+	}
+
+	return NewButtonEvent
 }
